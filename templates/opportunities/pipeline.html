@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}Pipeline | {{ config.APP_NAME }}{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
+  <div>
+    <p class="text-uppercase small fw-semibold text-body-secondary mb-1">Pipeline</p>
+    <h1 class="h3 mb-1">Stage board</h1>
+    <p class="text-body-secondary mb-0">Drag-and-drop can layer on later. For now, stage moves are explicit and auditable.</p>
+  </div>
+  <div class="d-flex gap-2">
+    <a class="btn btn-outline-secondary" href="{{ url_for('opportunities.stages_view') }}">Manage Stages</a>
+    <a class="btn btn-primary" href="{{ url_for('opportunities.create_view') }}">New Opportunity</a>
+  </div>
+</div>
+
+<div class="row g-3">
+  {% for stage in stages %}
+  <div class="col-lg-4">
+    <div class="crm-card h-100">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <div>
+            <div class="crm-field-label">Stage</div>
+            <h2 class="h5 mb-0">{{ stage.display_name }}</h2>
+          </div>
+          <span class="badge text-bg-light">{{ grouped.get(stage.stage_key, [])|length }}</span>
+        </div>
+        {% for opportunity in grouped.get(stage.stage_key, []) %}
+        <div class="border rounded-3 p-3 mb-2 bg-body-tertiary">
+          <a class="fw-semibold text-decoration-none" href="{{ url_for('opportunities.detail_view', opportunity_id=opportunity.id) }}">{{ opportunity.title }}</a>
+          <div class="small text-body-secondary mb-2">{{ opportunity.account_name }}</div>
+          <div class="small mb-2">
+            {% if opportunity.amount %}${{ "{:,.0f}".format(opportunity.amount) }}{% else %}No amount{% endif %}
+            · {{ opportunity.probability }}%
+          </div>
+          <form method="post" action="{{ url_for('opportunities.update_stage_view', opportunity_id=opportunity.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="input-group input-group-sm">
+              <select class="form-select" name="stage">
+                {% for target in stages %}
+                <option value="{{ target.stage_key }}" {% if target.stage_key == opportunity.stage %}selected{% endif %}>{{ target.display_name }}</option>
+                {% endfor %}
+              </select>
+              <button class="btn btn-outline-primary" type="submit">Move</button>
+            </div>
+          </form>
+        </div>
+        {% else %}
+        <p class="text-body-secondary mb-0">No opportunities in this stage.</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

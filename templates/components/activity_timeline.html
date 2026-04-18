@@ -1,0 +1,26 @@
+<div class="crm-card">
+  <div class="card-body">
+    <h2 class="h5 mb-3">Activity</h2>
+    {% for activity in activities %}
+    <div class="crm-activity">
+      <div class="crm-field-label">{{ activity.activity_type.replace('_', ' ') }}</div>
+      <div class="fw-semibold mb-1">{{ activity.description }}</div>
+      {% if activity.metadata and activity.metadata.get('mentions') %}
+      <div class="d-flex flex-wrap gap-1 mb-1">
+        {% for mention in activity.metadata.get('mentions', []) %}
+        <span class="badge text-bg-light">@{{ mention.full_name or mention.email }}</span>
+        {% endfor %}
+      </div>
+      {% endif %}
+      <div class="small text-body-secondary">
+        {{ activity.created_at.strftime("%Y-%m-%d %H:%M") if activity.created_at else "" }}
+        {% if activity.created_by_name %}
+        · {{ activity.created_by_name }}
+        {% endif %}
+      </div>
+    </div>
+    {% else %}
+    <p class="text-body-secondary mb-0">No activity yet.</p>
+    {% endfor %}
+  </div>
+</div>

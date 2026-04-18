@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }} | {{ config.APP_NAME }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <p class="text-uppercase small fw-semibold text-body-secondary mb-1">Opportunities</p>
+    <h1 class="h3 mb-0">{{ page_title }}</h1>
+  </div>
+  <a class="btn btn-outline-secondary" href="{{ url_for('opportunities.list_view') }}">Back to Opportunities</a>
+</div>
+
+<div class="crm-card">
+  <div class="card-body">
+    <form method="post" novalidate>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label" for="title">Title</label>
+          <input class="form-control" id="title" name="title" value="{{ form_data.title or '' }}" required>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label" for="account_id">Account</label>
+          <select class="form-select" id="account_id" name="account_id" required>
+            <option value="">Select an account</option>
+            {% for account in accounts %}
+            <option value="{{ account.id }}" {% if (form_data.account_id|string) == (account.id|string) %}selected{% endif %}>{{ account.company_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label" for="contact_id">Contact</label>
+          <select class="form-select" id="contact_id" name="contact_id">
+            <option value="">No contact selected</option>
+            {% for contact in contacts %}
+            <option value="{{ contact.id }}" {% if (form_data.contact_id|string) == (contact.id|string) %}selected{% endif %}>{{ contact.first_name }} {{ contact.last_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label" for="owner_id">Owner</label>
+          <select class="form-select" id="owner_id" name="owner_id">
+            <option value="">Unassigned</option>
+            {% for owner in owners %}
+            <option value="{{ owner.id }}" {% if (form_data.owner_id|string) == (owner.id|string) %}selected{% endif %}>{{ owner.full_name }} · {{ owner.role|title }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label" for="stage">Stage</label>
+          <select class="form-select" id="stage" name="stage">
+            {% for stage in stages %}
+            <option value="{{ stage.stage_key }}" {% if (form_data.stage or 'prospecting') == stage.stage_key %}selected{% endif %}>{{ stage.display_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label" for="probability">Probability %</label>
+          <input class="form-control" id="probability" name="probability" type="number" min="0" max="100" value="{{ form_data.probability or 10 }}">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label" for="amount">Amount</label>
+          <input class="form-control" id="amount" name="amount" type="number" step="0.01" value="{{ form_data.amount or '' }}">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label" for="currency">Currency</label>
+          <input class="form-control" id="currency" name="currency" value="{{ form_data.currency or 'CAD' }}">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label" for="expected_close_date">Expected Close</label>
+          <input class="form-control" id="expected_close_date" name="expected_close_date" type="date" value="{{ form_data.expected_close_date or '' }}">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label" for="close_date">Close Date</label>
+          <input class="form-control" id="close_date" name="close_date" type="date" value="{{ form_data.close_date or '' }}">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label" for="close_reason">Close Reason</label>
+          <input class="form-control" id="close_reason" name="close_reason" value="{{ form_data.close_reason or '' }}">
+        </div>
+        <div class="col-12">
+          <label class="form-label" for="notes">Notes</label>
+          <textarea class="form-control" id="notes" name="notes" rows="5">{{ form_data.notes or '' }}</textarea>
+        </div>
+        {% if custom_field_definitions %}
+        <div class="col-12">
+          <hr>
+          <h2 class="h5 mb-3">Custom Fields</h2>
+          {% include "components/custom_fields_form.html" %}
+        </div>
+        {% endif %}
+      </div>
+      <div class="d-flex gap-2 mt-4">
+        <button class="btn btn-primary" type="submit">{{ submit_label }}</button>
+        <a class="btn btn-outline-secondary" href="{% if opportunity %}{{ url_for('opportunities.detail_view', opportunity_id=opportunity.id) }}{% else %}{{ url_for('opportunities.list_view') }}{% endif %}">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

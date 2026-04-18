@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}Users | {{ config.APP_NAME }}{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
+  <div>
+    <p class="text-uppercase small fw-semibold text-body-secondary mb-1">Users</p>
+    <h1 class="h3 mb-1">Team access and roles</h1>
+    <p class="text-body-secondary mb-0">Manage CRM logins, roles, and active status for admins, managers, and reps.</p>
+  </div>
+  <a class="btn btn-primary" href="{{ url_for('users.create_view') }}">New User</a>
+</div>
+
+<div class="crm-card">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead>
+        <tr>
+          <th>User</th>
+          <th>Role</th>
+          <th>Status</th>
+          <th>Updated</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for user in users %}
+        <tr>
+          <td>
+            <div class="fw-semibold">{{ user.full_name }}</div>
+            <div class="small text-body-secondary">{{ user.email }}</div>
+          </td>
+          <td><span class="badge text-bg-light text-uppercase">{{ user.role }}</span></td>
+          <td>
+            {% if user.is_active %}
+            <span class="badge text-bg-success">Active</span>
+            {% else %}
+            <span class="badge text-bg-secondary">Inactive</span>
+            {% endif %}
+          </td>
+          <td>{{ user.updated_at.strftime("%Y-%m-%d") if user.updated_at else "—" }}</td>
+          <td class="text-end">
+            <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('users.edit_view', user_id=user.id) }}">Edit</a>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="5" class="text-center py-5 text-body-secondary">No users found.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

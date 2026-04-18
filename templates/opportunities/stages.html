@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}Stages | {{ config.APP_NAME }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <p class="text-uppercase small fw-semibold text-body-secondary mb-1">Pipeline Settings</p>
+    <h1 class="h3 mb-0">Stage configuration</h1>
+  </div>
+  <a class="btn btn-outline-secondary" href="{{ url_for('opportunities.pipeline_view') }}">Back to Pipeline</a>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="crm-card">
+      <div class="table-responsive">
+        <table class="table align-middle mb-0">
+          <thead>
+            <tr>
+              <th>Key</th>
+              <th>Display</th>
+              <th>Order</th>
+              <th>Default %</th>
+              <th>Active</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for stage in stages %}
+            <tr>
+              <td><code>{{ stage.stage_key }}</code></td>
+              <td>{{ stage.display_name }}</td>
+              <td>{{ stage.display_order }}</td>
+              <td>{{ stage.default_probability }}</td>
+              <td>{{ "Yes" if stage.is_active else "No" }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-5">
+    <div class="crm-card">
+      <div class="card-body">
+        <h2 class="h5 mb-3">Add or Update Stage</h2>
+        <form method="post">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="mb-3">
+            <label class="form-label" for="stage_key">Stage Key</label>
+            <input class="form-control" id="stage_key" name="stage_key" placeholder="proposal">
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="display_name">Display Name</label>
+            <input class="form-control" id="display_name" name="display_name" placeholder="Proposal">
+          </div>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label" for="display_order">Display Order</label>
+              <input class="form-control" id="display_order" name="display_order" type="number" value="0">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="default_probability">Default Probability</label>
+              <input class="form-control" id="default_probability" name="default_probability" type="number" min="0" max="100" value="0">
+            </div>
+          </div>
+          <div class="form-check mt-3">
+            <input class="form-check-input" id="is_active" name="is_active" type="checkbox" checked>
+            <label class="form-check-label" for="is_active">Active stage</label>
+          </div>
+          <button class="btn btn-primary mt-4" type="submit">Save Stage</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

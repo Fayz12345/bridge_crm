@@ -1,0 +1,79 @@
+:root {
+  --crm-ink: #18222f;
+  --crm-muted: #5f6e7d;
+  --crm-border: #dde3ea;
+  --crm-surface: #ffffff;
+  --crm-panel: #f7f8fb;
+  --crm-primary: #0d6e6e;
+  --crm-primary-dark: #0a5555;
+  --crm-accent: #f0b429;
+}
+
+body {
+  color: var(--crm-ink);
+  background:
+    radial-gradient(circle at top left, rgba(240, 180, 41, 0.16), transparent 24rem),
+    linear-gradient(180deg, #f4f7fa 0%, #eef2f7 100%);
+  min-height: 100vh;
+}
+
+.login-shell {
+  background:
+    radial-gradient(circle at top right, rgba(13, 110, 110, 0.22), transparent 24rem),
+    linear-gradient(180deg, #f7f3ea 0%, #edf3f7 100%);
+}
+
+.crm-navbar {
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(14px);
+}
+
+.crm-card {
+  background: var(--crm-surface);
+  border: 1px solid var(--crm-border);
+  border-radius: 1rem;
+  box-shadow: 0 0.75rem 2rem rgba(24, 34, 47, 0.06);
+}
+
+.crm-card .card-body {
+  padding: 1.5rem;
+}
+
+.btn-primary {
+  background-color: var(--crm-primary);
+  border-color: var(--crm-primary);
+}
+
+.btn-primary:hover,
+.btn-primary:focus {
+  background-color: var(--crm-primary-dark);
+  border-color: var(--crm-primary-dark);
+}
+
+.crm-field-label {
+  color: var(--crm-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.2rem;
+  text-transform: uppercase;
+}
+
+.crm-notes {
+  min-height: 6rem;
+  white-space: pre-wrap;
+}
+
+.crm-activity {
+  border-left: 2px solid var(--crm-border);
+  margin-left: 0.35rem;
+  padding: 0 0 1rem 1rem;
+}
+
+.crm-activity:last-child {
+  padding-bottom: 0;
+}
+
+.table > :not(caption) > * > * {
+  padding: 1rem 1rem;
+}

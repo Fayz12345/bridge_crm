@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }} | {{ config.APP_NAME }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center gap-3 mb-4">
+  <div>
+    <p class="text-uppercase small fw-semibold text-body-secondary mb-1">Account Contact</p>
+    <h1 class="h3 mb-1">{{ page_title }}</h1>
+    <p class="text-body-secondary mb-0">{{ account.company_name }}</p>
+  </div>
+  <a class="btn btn-outline-secondary" href="{{ url_for('accounts.detail_view', account_id=account.id) }}">Back To Account</a>
+</div>
+
+<div class="crm-card">
+  <div class="card-body">
+    <form method="post" class="row g-3">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+      <div class="col-md-6">
+        <label class="form-label" for="first_name">First Name</label>
+        <input class="form-control" id="first_name" name="first_name" value="{{ form_data.first_name or '' }}" required>
+      </div>
+
+      <div class="col-md-6">
+        <label class="form-label" for="last_name">Last Name</label>
+        <input class="form-control" id="last_name" name="last_name" value="{{ form_data.last_name or '' }}" required>
+      </div>
+
+      <div class="col-md-6">
+        <label class="form-label" for="job_title">Job Title</label>
+        <input class="form-control" id="job_title" name="job_title" value="{{ form_data.job_title or '' }}">
+      </div>
+
+      <div class="col-md-6">
+        <label class="form-label" for="email">Email</label>
+        <input class="form-control" id="email" name="email" type="email" value="{{ form_data.email or '' }}" autocomplete="email">
+      </div>
+
+      <div class="col-md-3">
+        <label class="form-label" for="phone_prefix">Phone Prefix</label>
+        <input class="form-control" id="phone_prefix" name="phone_prefix" value="{{ form_data.phone_prefix or '+1' }}" maxlength="8" placeholder="+1" autocomplete="tel-country-code">
+      </div>
+
+      <div class="col-md-3">
+        <label class="form-label" for="phone">Phone</label>
+        <input class="form-control" id="phone" name="phone" value="{{ form_data.phone or '' }}" autocomplete="tel-national">
+      </div>
+
+      <div class="col-md-6">
+        <label class="form-label" for="whatsapp_number">WhatsApp Number</label>
+        <input class="form-control" id="whatsapp_number" name="whatsapp_number" value="{{ form_data.whatsapp_number or '' }}" autocomplete="tel">
+      </div>
+
+      <div class="col-12">
+        <div class="form-check">
+          <input class="form-check-input" id="is_primary" name="is_primary" type="checkbox" {% if form_data.is_primary %}checked{% endif %}>
+          <label class="form-check-label" for="is_primary">Set as primary contact for this account</label>
+        </div>
+      </div>
+
+      <div class="col-12 d-flex gap-2">
+        <button class="btn btn-primary" type="submit">{{ submit_label }}</button>
+        <a class="btn btn-outline-secondary" href="{{ url_for('accounts.detail_view', account_id=account.id) }}">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

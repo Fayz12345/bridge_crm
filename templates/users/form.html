@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }} | {{ config.APP_NAME }}{% endblock %}
+
+{% block content %}
+{% set active_checked = (form_data.get('is_active') == 'on') if request.method == 'POST' else (user_record.is_active if user_record else True) %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <p class="text-uppercase small fw-semibold text-body-secondary mb-1">Users</p>
+    <h1 class="h3 mb-0">{{ page_title }}</h1>
+  </div>
+  <a class="btn btn-outline-secondary" href="{{ url_for('users.list_view') }}">Back to Users</a>
+</div>
+
+<div class="crm-card">
+  <div class="card-body">
+    <form method="post" novalidate>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label" for="full_name">Full Name</label>
+          <input class="form-control" id="full_name" name="full_name" value="{{ form_data.full_name or '' }}" required>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label" for="email">Email</label>
+          <input class="form-control" id="email" name="email" type="email" value="{{ form_data.email or '' }}" {% if user_record %}readonly{% endif %} required>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label" for="role">Role</label>
+          <select class="form-select" id="role" name="role">
+            {% for role in role_options %}
+            <option value="{{ role }}" {% if (form_data.role or 'rep') == role %}selected{% endif %}>{{ role|title }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label" for="password">{% if user_record %}New Password{% else %}Password{% endif %}</label>
+          <input class="form-control" id="password" name="password" type="password" {% if not user_record %}required{% endif %}>
+          <div class="form-text">{% if user_record %}Leave blank to keep the current password.{% else %}Minimum 12 characters.{% endif %}</div>
+        </div>
+        <div class="col-12">
+          <div class="form-check">
+            <input class="form-check-input" id="is_active" name="is_active" type="checkbox" {% if active_checked %}checked{% endif %}>
+            <label class="form-check-label" for="is_active">User can sign in</label>
+          </div>
+        </div>
+      </div>
+
+      <div class="d-flex gap-2 mt-4">
+        <button class="btn btn-primary" type="submit">{{ submit_label }}</button>
+        <a class="btn btn-outline-secondary" href="{{ url_for('users.list_view') }}">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

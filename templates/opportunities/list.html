@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block title %}Opportunities | {{ config.APP_NAME }}{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
+  <div>
+    <p class="text-uppercase small fw-semibold text-body-secondary mb-1">Opportunities</p>
+    <h1 class="h3 mb-1">Deals in progress</h1>
+    <p class="text-body-secondary mb-0">Basic opportunity management is live. Pipeline board and quote builder can layer on this foundation next.</p>
+  </div>
+  <a class="btn btn-primary" href="{{ url_for('opportunities.create_view') }}">New Opportunity</a>
+</div>
+
+<div class="d-flex flex-wrap gap-2 mb-3">
+  <a class="btn {% if not active_stage %}btn-primary{% else %}btn-outline-secondary{% endif %}" href="{{ url_for('opportunities.list_view') }}">All</a>
+  {% for stage in stages %}
+  <a class="btn {% if active_stage == stage.stage_key %}btn-primary{% else %}btn-outline-secondary{% endif %}" href="{{ url_for('opportunities.list_view', stage=stage.stage_key) }}">{{ stage.display_name }}</a>
+  {% endfor %}
+</div>
+
+<div class="crm-card">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead>
+        <tr>
+          <th>Opportunity</th>
+          <th>Account</th>
+          <th>Stage</th>
+          <th>Amount</th>
+          <th>Owner</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for opportunity in opportunities %}
+        <tr>
+          <td>
+            <a class="fw-semibold text-decoration-none" href="{{ url_for('opportunities.detail_view', opportunity_id=opportunity.id) }}">{{ opportunity.title }}</a>
+            {% if opportunity.expected_close_date %}
+            <div class="small text-body-secondary">Close target: {{ opportunity.expected_close_date.strftime("%Y-%m-%d") }}</div>
+            {% endif %}
+          </td>
+          <td>{{ opportunity.account_name }}</td>
+          <td><span class="badge text-bg-light text-uppercase">{{ opportunity.stage.replace('_', ' ') }}</span></td>
+          <td>{% if opportunity.amount %}${{ "{:,.0f}".format(opportunity.amount) }}{% else %}—{% endif %}</td>
+          <td>{{ opportunity.owner_name or "Unassigned" }}</td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="5" class="text-center py-5 text-body-secondary">No opportunities found.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

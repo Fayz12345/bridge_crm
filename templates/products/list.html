@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block title %}Products | {{ config.APP_NAME }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <p class="text-uppercase small fw-semibold text-body-secondary mb-1">Products</p>
+    <h1 class="h3 mb-0">Synced inventory view</h1>
+  </div>
+</div>
+
+<div class="crm-card mb-3">
+  <div class="card-body">
+    <form class="row g-2 align-items-end" method="get">
+      <div class="col-md-3">
+        <label class="form-label" for="brand">Brand</label>
+        <select class="form-select" id="brand" name="brand">
+          <option value="">All brands</option>
+          {% for brand in options.brands %}
+          <option value="{{ brand }}" {% if filters.brand == brand %}selected{% endif %}>{{ brand }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label" for="model">Model</label>
+        <input class="form-control" id="model" name="model" value="{{ filters.model or '' }}">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label" for="grade">Grade</label>
+        <select class="form-select" id="grade" name="grade">
+          <option value="">All grades</option>
+          {% for grade in options.grades %}
+          <option value="{{ grade }}" {% if filters.grade == grade %}selected{% endif %}>{{ grade }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label" for="status">Status</label>
+        <select class="form-select" id="status" name="status">
+          <option value="">All statuses</option>
+          {% for status in options.statuses %}
+          <option value="{{ status }}" {% if filters.status == status %}selected{% endif %}>{{ status }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2">
+        <button class="btn btn-outline-primary w-100" type="submit">Filter</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="crm-card">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead>
+        <tr>
+          <th>Serial</th>
+          <th>Brand</th>
+          <th>Model</th>
+          <th>Grade</th>
+          <th>Status</th>
+          <th>Price</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for product in products %}
+        <tr>
+          <td><a class="text-decoration-none fw-semibold" href="{{ url_for('products.detail_view', product_id=product.id) }}">{{ product.serial_number or ('Product #' ~ product.id) }}</a></td>
+          <td>{{ product.brand_name or "—" }}</td>
+          <td>{{ product.model_name or "—" }}</td>
+          <td>{{ product.outward_grade or "—" }}</td>
+          <td>{{ product.item_status or "—" }}</td>
+          <td>{% if product.outward_sales_price %}${{ "{:,.2f}".format(product.outward_sales_price) }}{% else %}—{% endif %}</td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="6" class="text-center py-5 text-body-secondary">No synced products yet. ERP sync will populate this module once connectivity is configured.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

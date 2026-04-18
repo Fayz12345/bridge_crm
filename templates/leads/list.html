@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}Leads | {{ config.APP_NAME }}{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
+  <div>
+    <p class="text-uppercase small fw-semibold text-body-secondary mb-1">Leads</p>
+    <h1 class="h3 mb-1">Inbound sales pipeline</h1>
+    <p class="text-body-secondary mb-0">Track new prospects, qualify them, and convert them into accounts and opportunities.</p>
+  </div>
+  <a class="btn btn-primary" href="{{ url_for('leads.create_view') }}">New Lead</a>
+</div>
+
+<div class="d-flex flex-wrap gap-2 mb-3">
+  {% for key, label in [('new', 'New'), ('contacted', 'Contacted'), ('qualified', 'Qualified'), ('unqualified', 'Unqualified'), ('converted', 'Converted'), ('all', 'All')] %}
+  <a class="btn {% if active_status == key %}btn-primary{% else %}btn-outline-secondary{% endif %}" href="{{ url_for('leads.list_view', status=key) }}">{{ label }}</a>
+  {% endfor %}
+</div>
+
+<div class="crm-card mb-3">
+  <div class="card-body">
+    <form class="row g-2 align-items-end" method="get">
+      <input type="hidden" name="status" value="{{ active_status }}">
+      <div class="col-12 col-lg-6">
+        <label class="form-label" for="q">Search leads</label>
+        <input class="form-control" id="q" name="q" value="{{ search_term }}" placeholder="Name, email, company, interest">
+      </div>
+      <div class="col-auto">
+        <button class="btn btn-outline-primary" type="submit">Search</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="crm-card">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Company</th>
+          <th>Status</th>
+          <th>Source</th>
+          <th>Owner</th>
+          <th>Created</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for lead in leads %}
+        <tr>
+          <td>
+            <a class="fw-semibold text-decoration-none" href="{{ url_for('leads.detail_view', lead_id=lead.id) }}">{{ lead.first_name }} {{ lead.last_name }}</a>
+            <div class="small text-body-secondary">{{ lead.email or "No email" }}</div>
+          </td>
+          <td>{{ lead.company_name or "—" }}</td>
+          <td><span class="badge text-bg-light text-uppercase">{{ lead.status.replace('_', ' ') }}</span></td>
+          <td>{{ lead.source.replace('_', ' ') }}</td>
+          <td>{{ lead.owner_name or "Unassigned" }}</td>
+          <td>{{ lead.created_at.strftime("%Y-%m-%d") if lead.created_at else "—" }}</td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="6" class="text-center py-5 text-body-secondary">No leads found.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

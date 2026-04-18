@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }} | {{ config.APP_NAME }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <p class="text-uppercase small fw-semibold text-body-secondary mb-1">Accounts</p>
+    <h1 class="h3 mb-0">{{ page_title }}</h1>
+  </div>
+  <a class="btn btn-outline-secondary" href="{{ url_for('accounts.list_view') }}">Back to Accounts</a>
+</div>
+
+<div class="crm-card">
+  <div class="card-body">
+    <form method="post" novalidate>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label" for="company_name">Company Name</label>
+          <input class="form-control" id="company_name" name="company_name" value="{{ form_data.company_name or '' }}" required>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label" for="contact_name">Primary Contact Name</label>
+          <input class="form-control" id="contact_name" name="contact_name" value="{{ form_data.contact_name or '' }}">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label" for="email">Email</label>
+          <input class="form-control" id="email" name="email" type="email" value="{{ form_data.email or '' }}">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label" for="phone_prefix">Prefix</label>
+          <input class="form-control" id="phone_prefix" name="phone_prefix" maxlength="8" autocomplete="tel-country-code" placeholder="+1" value="{{ form_data.phone_prefix or '+1' }}">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label" for="phone">Phone</label>
+          <input class="form-control" id="phone" name="phone" autocomplete="tel-national" value="{{ form_data.phone or '' }}">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label" for="erp_client_id">ERP Client ID</label>
+          <input class="form-control" id="erp_client_id" name="erp_client_id" maxlength="11" value="{{ form_data.erp_client_id or '' }}">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label" for="website">Website</label>
+          <input class="form-control" id="website" name="website" value="{{ form_data.website or '' }}">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label" for="industry">Industry</label>
+          <input class="form-control" id="industry" name="industry" value="{{ form_data.industry or '' }}">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label" for="address_line_1">Address Line 1</label>
+          <input class="form-control" id="address_line_1" name="address_line_1" value="{{ form_data.address_line_1 or '' }}">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label" for="address_line_2">Address Line 2</label>
+          <input class="form-control" id="address_line_2" name="address_line_2" value="{{ form_data.address_line_2 or '' }}">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label" for="city">City</label>
+          <input class="form-control" id="city" name="city" value="{{ form_data.city or '' }}">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label" for="state_province">State / Province</label>
+          <input class="form-control" id="state_province" name="state_province" value="{{ form_data.state_province or '' }}">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label" for="postal_code">Postal Code</label>
+          <input class="form-control" id="postal_code" name="postal_code" value="{{ form_data.postal_code or '' }}">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label" for="country">Country</label>
+          <input class="form-control" id="country" name="country" value="{{ form_data.country or 'Canada' }}">
+        </div>
+        <div class="col-12">
+          <label class="form-label" for="notes">Notes</label>
+          <textarea class="form-control" id="notes" name="notes" rows="5">{{ form_data.notes or '' }}</textarea>
+        </div>
+        {% if custom_field_definitions %}
+        <div class="col-12">
+          <hr>
+          <h2 class="h5 mb-3">Custom Fields</h2>
+          {% include "components/custom_fields_form.html" %}
+        </div>
+        {% endif %}
+      </div>
+
+      <div class="d-flex gap-2 mt-4">
+        <button class="btn btn-primary" type="submit">{{ submit_label }}</button>
+        {% if account %}
+        <a class="btn btn-outline-secondary" href="{{ url_for('accounts.detail_view', account_id=account.id) }}">Cancel</a>
+        {% else %}
+        <a class="btn btn-outline-secondary" href="{{ url_for('accounts.list_view') }}">Cancel</a>
+        {% endif %}
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

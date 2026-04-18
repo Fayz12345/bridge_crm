@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block title %}{{ account.company_name }} | {{ config.APP_NAME }}{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
+  <div>
+    <p class="text-uppercase small fw-semibold text-body-secondary mb-1">Account Detail</p>
+    <h1 class="h3 mb-1">{{ account.company_name }}</h1>
+    <p class="text-body-secondary mb-0">{{ account.industry or "Industry not set" }}</p>
+  </div>
+  <div class="d-flex gap-2">
+    <a class="btn btn-outline-secondary" href="{{ url_for('accounts.list_view') }}">Back</a>
+    <a class="btn btn-primary" href="{{ url_for('accounts.edit_view', account_id=account.id) }}">Edit Account</a>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-8">
+    <div class="crm-card h-100">
+      <div class="card-body">
+        <h2 class="h5 mb-3">Company Profile</h2>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <div class="crm-field-label">Primary Contact</div>
+            <div>{{ account.contact_name or "—" }}</div>
+          </div>
+          <div class="col-md-6">
+            <div class="crm-field-label">Owner</div>
+            <div>{{ account.owner_name or "—" }}</div>
+          </div>
+          <div class="col-md-6">
+            <div class="crm-field-label">Email</div>
+            <div>{{ account.email or "—" }}</div>
+          </div>
+          <div class="col-md-6">
+            <div class="crm-field-label">Phone</div>
+            <div>{{ account.phone_prefix or "" }} {{ account.phone or "—" }}</div>
+          </div>
+          <div class="col-md-6">
+            <div class="crm-field-label">Website</div>
+            <div>{{ account.website or "—" }}</div>
+          </div>
+          <div class="col-md-6">
+            <div class="crm-field-label">ERP Client ID</div>
+            <div><code>{{ account.erp_client_id or "—" }}</code></div>
+          </div>
+          <div class="col-12">
+            <div class="crm-field-label">Address</div>
+            <div>
+              {{ account.address_line_1 or "" }}
+              {% if account.address_line_2 %}<br>{{ account.address_line_2 }}{% endif %}
+              {% if account.city or account.state_province or account.postal_code %}
+              <br>{{ account.city or "" }}{% if account.city and account.state_province %}, {% endif %}{{ account.state_province or "" }} {{ account.postal_code or "" }}
+              {% endif %}
+              {% if account.country %}<br>{{ account.country }}{% endif %}
+            </div>
+          </div>
+          <div class="col-12">
+            <div class="crm-field-label">Notes</div>
+            <div class="crm-notes">{{ account.notes or "No notes added yet." }}</div>
+          </div>
+          {% if custom_field_rows %}
+          <div class="col-12">
+            <hr>
+            <h3 class="h6 mb-3">Custom Fields</h3>
+            {% include "components/custom_fields_display.html" %}
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="crm-card mb-3">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h2 class="h5 mb-0">Contacts</h2>
+          <a class="btn btn-sm btn-primary" href="{{ url_for('accounts.create_contact_view', account_id=account.id) }}">Add Contact</a>
+        </div>
+        {% for contact in contacts %}
+        <div class="border rounded-3 p-3 mb-2">
+          <div class="d-flex justify-content-between align-items-start gap-2">
+            <div>
+              <div class="fw-semibold">
+                {{ contact.first_name }} {{ contact.last_name }}
+                {% if contact.is_primary %}
+                <span class="badge text-bg-secondary align-text-top">Primary</span>
+                {% endif %}
+              </div>
+              <div class="small text-body-secondary">{{ contact.job_title or "No title" }}</div>
+            </div>
+            <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('accounts.edit_contact_view', account_id=account.id, contact_id=contact.id) }}">Edit</a>
+          </div>
+          <div class="small mt-2">{{ contact.email or "—" }}</div>
+          <div class="small">{{ contact.phone_prefix or "" }} {{ contact.phone or "—" }}</div>
+          <div class="small">{{ contact.whatsapp_number or "No WhatsApp number" }}</div>
+        </div>
+        {% else %}
+        <p class="text-body-secondary mb-0">No contacts yet. Add a contact to link people to this account and use them in opportunities.</p>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="crm-card">
+      <div class="card-body">
+        <h2 class="h5 mb-3">Record Metadata</h2>
+        <div class="crm-field-label">Created By</div>
+        <div class="mb-2">{{ account.created_by_name or "—" }}</div>
+        <div class="crm-field-label">Created At</div>
+        <div class="mb-2">{{ account.created_at.strftime("%Y-%m-%d %H:%M") if account.created_at else "—" }}</div>
+        <div class="crm-field-label">Updated At</div>
+        <div>{{ account.updated_at.strftime("%Y-%m-%d %H:%M") if account.updated_at else "—" }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

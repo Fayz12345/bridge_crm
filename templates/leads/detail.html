@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block title %}{{ lead.first_name }} {{ lead.last_name }} | {{ config.APP_NAME }}{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
+  <div>
+    <p class="text-uppercase small fw-semibold text-body-secondary mb-1">Lead Detail</p>
+    <h1 class="h3 mb-1">{{ lead.first_name }} {{ lead.last_name }}</h1>
+    <p class="text-body-secondary mb-0">{{ lead.company_name or "No company set" }}</p>
+  </div>
+  <div class="d-flex gap-2">
+    <a class="btn btn-outline-secondary" href="{{ url_for('leads.list_view') }}">Back</a>
+    <a class="btn btn-outline-primary" href="{{ url_for('leads.edit_view', lead_id=lead.id) }}">Edit Lead</a>
+    {% if lead.status != 'converted' %}
+    <form method="post" action="{{ url_for('leads.convert_view', lead_id=lead.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="btn btn-primary" type="submit">Convert to Opportunity</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="crm-card">
+      <div class="card-body">
+        <h2 class="h5 mb-3">Lead Profile</h2>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <div class="crm-field-label">Status</div>
+            <div><span class="badge text-bg-light text-uppercase">{{ lead.status.replace('_', ' ') }}</span></div>
+          </div>
+          <div class="col-md-6">
+            <div class="crm-field-label">Source</div>
+            <div>{{ lead.source.replace('_', ' ')|title }}</div>
+          </div>
+          <div class="col-md-6">
+            <div class="crm-field-label">Email</div>
+            <div>{{ lead.email or "—" }}</div>
+          </div>
+          <div class="col-md-6">
+            <div class="crm-field-label">Phone</div>
+            <div>{{ lead.phone_prefix or "" }} {{ lead.phone or "—" }}</div>
+          </div>
+          <div class="col-md-6">
+            <div class="crm-field-label">Owner</div>
+            <div>{{ lead.owner_name or "Unassigned" }}</div>
+          </div>
+          <div class="col-12">
+            <div class="crm-field-label">Interest</div>
+            <div class="crm-notes">{{ lead.interest or "No interest notes yet." }}</div>
+          </div>
+          <div class="col-12">
+            <div class="crm-field-label">Internal Notes</div>
+            <div class="crm-notes">{{ lead.notes or "No notes yet." }}</div>
+          </div>
+          {% if custom_field_rows %}
+          <div class="col-12">
+            <hr>
+            <h3 class="h6 mb-3">Custom Fields</h3>
+            {% include "components/custom_fields_display.html" %}
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-5">
+    {% include "components/activity_timeline.html" %}
+  </div>
+</div>
+{% endblock %}

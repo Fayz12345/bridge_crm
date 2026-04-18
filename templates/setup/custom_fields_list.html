@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block title %}Custom Fields | {{ config.APP_NAME }}{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
+  <div>
+    <p class="text-uppercase small fw-semibold text-body-secondary mb-1">Setup</p>
+    <h1 class="h3 mb-1">Custom fields</h1>
+    <p class="text-body-secondary mb-0">Define extra fields that show up on CRM records.</p>
+  </div>
+  <div class="d-flex gap-2">
+    <a class="btn btn-outline-secondary" href="{{ url_for('setup.index') }}">Back to Setup</a>
+    <a class="btn btn-primary" href="{{ url_for('custom_fields.create_view') }}">New Field</a>
+  </div>
+</div>
+
+<div class="d-flex flex-wrap gap-2 mb-3">
+  <a class="btn {% if object_type == 'all' %}btn-primary{% else %}btn-outline-secondary{% endif %}" href="{{ url_for('custom_fields.list_view') }}">All</a>
+  {% for value in object_types %}
+  <a class="btn {% if object_type == value %}btn-primary{% else %}btn-outline-secondary{% endif %}" href="{{ url_for('custom_fields.list_view', object_type=value) }}">{{ value|title }}</a>
+  {% endfor %}
+</div>
+
+<div class="crm-card">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead>
+        <tr>
+          <th>Label</th>
+          <th>Object</th>
+          <th>Key</th>
+          <th>Type</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for field in fields %}
+        <tr>
+          <td>
+            <div class="fw-semibold">{{ field.field_label }}</div>
+            <div class="small text-body-secondary">{{ field.help_text or "No help text" }}</div>
+          </td>
+          <td>{{ field.object_type|title }}</td>
+          <td><code>{{ field.field_key }}</code></td>
+          <td>{{ field.field_type }}</td>
+          <td>{% if field.is_active %}Active{% else %}Inactive{% endif %}</td>
+          <td class="text-end">
+            <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('custom_fields.edit_view', field_id=field.id) }}">Edit</a>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="6" class="text-center py-5 text-body-secondary">No custom fields defined.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

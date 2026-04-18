@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block title %}Reports | {{ config.APP_NAME }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <p class="text-uppercase small fw-semibold text-body-secondary mb-1">Reports</p>
+    <h1 class="h3 mb-0">Pipeline and lead analytics</h1>
+  </div>
+  <a class="btn btn-outline-primary" href="{{ url_for('reports.pipeline_csv') }}">Export Pipeline CSV</a>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-4">
+    <div class="crm-card h-100">
+      <div class="card-body">
+        <h2 class="h5 mb-3">Pipeline Breakdown</h2>
+        {% for row in pipeline %}
+        <div class="d-flex justify-content-between border-bottom py-2">
+          <div>{{ row.stage.replace('_', ' ')|title }}</div>
+          <div>{{ row.count }} · ${{ "{:,.0f}".format(row.amount) }}</div>
+        </div>
+        {% else %}
+        <p class="text-body-secondary mb-0">No opportunity data yet.</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="crm-card h-100">
+      <div class="card-body">
+        <h2 class="h5 mb-3">Lead Sources</h2>
+        {% for row in lead_sources %}
+        <div class="d-flex justify-content-between border-bottom py-2">
+          <div>{{ row.source.replace('_', ' ')|title }}</div>
+          <div>{{ row.count }}</div>
+        </div>
+        {% else %}
+        <p class="text-body-secondary mb-0">No lead source data yet.</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="crm-card h-100">
+      <div class="card-body">
+        <h2 class="h5 mb-3">Sales Forecast</h2>
+        {% for row in forecast %}
+        <div class="d-flex justify-content-between border-bottom py-2">
+          <div>{{ row.forecast_month }}</div>
+          <div>${{ "{:,.0f}".format(row.weighted_amount) }}</div>
+        </div>
+        {% else %}
+        <p class="text-body-secondary mb-0">No forecast data yet.</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

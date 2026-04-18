@@ -1,0 +1,234 @@
+{% extends "base.html" %}
+
+{% block title %}{{ opportunity.title }} | {{ config.APP_NAME }}{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
+  <div>
+    <p class="text-uppercase small fw-semibold text-body-secondary mb-1">Opportunity Detail</p>
+    <h1 class="h3 mb-1">{{ opportunity.title }}</h1>
+    <p class="text-body-secondary mb-0">{{ opportunity.account_name }}</p>
+  </div>
+  <div class="d-flex gap-2">
+    <a class="btn btn-outline-secondary" href="{{ url_for('opportunities.list_view') }}">Back</a>
+    <a class="btn btn-primary" href="{{ url_for('opportunities.edit_view', opportunity_id=opportunity.id) }}">Edit Opportunity</a>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="crm-card">
+      <div class="card-body">
+        <h2 class="h5 mb-3">Deal Summary</h2>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <div class="crm-field-label">Stage</div>
+            <div><span class="badge text-bg-light text-uppercase">{{ opportunity.stage.replace('_', ' ') }}</span></div>
+          </div>
+          <div class="col-md-6">
+            <div class="crm-field-label">Probability</div>
+            <div>{{ opportunity.probability }}%</div>
+          </div>
+          <div class="col-md-6">
+            <div class="crm-field-label">Amount</div>
+            <div>{% if opportunity.amount %}${{ "{:,.2f}".format(opportunity.amount) }} {{ opportunity.currency }}{% else %}—{% endif %}</div>
+          </div>
+          <div class="col-md-6">
+            <div class="crm-field-label">Expected Close</div>
+            <div>{{ opportunity.expected_close_date.strftime("%Y-%m-%d") if opportunity.expected_close_date else "—" }}</div>
+          </div>
+          <div class="col-md-6">
+            <div class="crm-field-label">Primary Contact</div>
+            <div>{{ ((opportunity.contact_first_name or '') ~ ' ' ~ (opportunity.contact_last_name or '')).strip() or "—" }}</div>
+          </div>
+          <div class="col-md-6">
+            <div class="crm-field-label">Contact Email</div>
+            <div>{{ opportunity.contact_email or opportunity.account_email or "—" }}</div>
+          </div>
+          <div class="col-md-6">
+            <div class="crm-field-label">Owner</div>
+            <div>{{ opportunity.owner_name or "Unassigned" }}</div>
+          </div>
+          <div class="col-12">
+            <div class="crm-field-label">Notes</div>
+            <div class="crm-notes">{{ opportunity.notes or "No notes yet." }}</div>
+          </div>
+          {% if custom_field_rows %}
+          <div class="col-12">
+            <hr>
+            <h3 class="h6 mb-3">Custom Fields</h3>
+            {% include "components/custom_fields_display.html" %}
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    <div class="crm-card mt-3">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h2 class="h5 mb-0">Quote Lines</h2>
+          <span class="small text-body-secondary">{{ line_items|length }} lines</span>
+        </div>
+        <div class="table-responsive mb-4">
+          <table class="table align-middle mb-0">
+            <thead>
+              <tr>
+                <th>Item</th>
+                <th>Qty</th>
+                <th>Unit</th>
+                <th>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for line in line_items %}
+              <tr>
+                <td>
+                  <div class="fw-semibold">{{ line.brand }} {{ line.model }}</div>
+                  <div class="small text-body-secondary">{{ line.grade or "—" }} · {{ line.storage or "—" }}</div>
+                </td>
+                <td>{{ line.quantity }}</td>
+                <td>${{ "{:,.2f}".format(line.unit_price) }}</td>
+                <td>${{ "{:,.2f}".format(line.line_total) }}</td>
+              </tr>
+              {% else %}
+              <tr>
+                <td colspan="4" class="text-body-secondary py-4 text-center">No quote lines yet.</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <form method="post" action="{{ url_for('opportunities.add_line_view', opportunity_id=opportunity.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="row g-3">
+            <div class="col-md-3">
+              <label class="form-label" for="brand">Brand</label>
+              <input class="form-control" id="brand" name="brand" list="stock-brands" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label" for="model">Model</label>
+              <input class="form-control" id="model" name="model" list="stock-models" required>
+            </div>
+            <div class="col-md-2">
+              <label class="form-label" for="grade">Grade</label>
+              <input class="form-control" id="grade" name="grade" list="stock-grades">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label" for="storage">Storage</label>
+              <input class="form-control" id="storage" name="storage" list="stock-storage">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label" for="category">Category</label>
+              <input class="form-control" id="category" name="category">
+            </div>
+            <div class="col-md-2">
+              <label class="form-label" for="quantity">Qty</label>
+              <input class="form-control" id="quantity" name="quantity" type="number" min="1" value="1" required>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label" for="unit_price">Unit Price</label>
+              <input class="form-control" id="unit_price" name="unit_price" type="number" step="0.01" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label" for="line_notes">Line Notes</label>
+              <input class="form-control" id="line_notes" name="notes">
+            </div>
+          </div>
+          <datalist id="stock-brands">
+            {% for item in stock_groups %}
+            <option value="{{ item.brand }}"></option>
+            {% endfor %}
+          </datalist>
+          <datalist id="stock-models">
+            {% for item in stock_groups %}
+            <option value="{{ item.model }}">{{ item.brand }} · {{ item.available_count }} in stock</option>
+            {% endfor %}
+          </datalist>
+          <datalist id="stock-grades">
+            {% for item in stock_groups %}
+            <option value="{{ item.grade }}">{{ item.model }} · {{ item.available_count }} in stock</option>
+            {% endfor %}
+          </datalist>
+          <datalist id="stock-storage">
+            {% for item in stock_groups %}
+            <option value="{{ item.storage }}"></option>
+            {% endfor %}
+          </datalist>
+          <button class="btn btn-outline-primary mt-3" type="submit">Add Quote Line</button>
+        </form>
+      </div>
+    </div>
+    <div class="crm-card mt-3">
+      <div class="card-body">
+        <h2 class="h5 mb-3">Outbound Email</h2>
+        <form method="post" action="{{ url_for('opportunities.send_email_view', opportunity_id=opportunity.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label" for="to_address">To</label>
+              <input class="form-control" id="to_address" name="to_address" value="{{ opportunity.contact_email or opportunity.account_email or '' }}" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="cc_address">CC</label>
+              <input class="form-control" id="cc_address" name="cc_address">
+            </div>
+            <div class="col-12">
+              <label class="form-label" for="subject">Subject</label>
+              <input class="form-control" id="subject" name="subject" value="{{ opportunity.title }}" required>
+            </div>
+            <div class="col-12">
+              <label class="form-label" for="body_text">Message</label>
+              <textarea class="form-control" id="body_text" name="body_text" rows="5" required>Hi {{ opportunity.contact_first_name or opportunity.account_name }},</textarea>
+            </div>
+          </div>
+          <div class="small text-body-secondary mt-2">
+            {% if smtp_ready %}
+            SMTP is configured and email will be sent live.
+            {% else %}
+            SMTP credentials are not configured yet. Messages will be logged and marked failed until credentials are added.
+            {% endif %}
+          </div>
+          <button class="btn btn-outline-primary mt-3" type="submit">Send Email</button>
+        </form>
+        <hr>
+        <h3 class="h6 mb-3">Email History</h3>
+        {% for email in emails %}
+        <div class="border rounded-3 p-3 mb-2">
+          <div class="d-flex justify-content-between">
+            <div class="fw-semibold">{{ email.subject }}</div>
+            <span class="badge text-bg-light text-uppercase">{{ email.status }}</span>
+          </div>
+          <div class="small text-body-secondary mb-2">{{ email.to_address }}</div>
+          <div class="small">{{ email.body_text }}</div>
+          {% if email.error_message %}
+          <div class="small text-danger mt-2">{{ email.error_message }}</div>
+          {% endif %}
+        </div>
+        {% else %}
+        <p class="text-body-secondary mb-0">No outbound emails logged yet.</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-5">
+    <div class="crm-card mb-3">
+      <div class="card-body">
+        <h2 class="h5 mb-3">Add Note</h2>
+        <form method="post" action="{{ url_for('opportunities.add_note_view', opportunity_id=opportunity.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <textarea class="form-control" name="note" rows="4" placeholder="Add an internal note. You can tag teammates with @email or the picker below."></textarea>
+          <label class="form-label mt-3" for="tag_user_ids">Tag Teammates</label>
+          <select class="form-select" id="tag_user_ids" name="tag_user_ids" multiple size="5">
+            {% for user in mentionable_users %}
+            <option value="{{ user.id }}">{{ user.full_name }} · {{ user.role|title }}</option>
+            {% endfor %}
+          </select>
+          <div class="form-text">Hold Command or Ctrl to select more than one teammate.</div>
+          <button class="btn btn-outline-primary mt-3" type="submit">Save Note</button>
+        </form>
+      </div>
+    </div>
+    {% include "components/activity_timeline.html" %}
+  </div>
+</div>
+{% endblock %}

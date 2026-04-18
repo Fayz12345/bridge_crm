@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Login | {{ config.APP_NAME }}</title>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}">
+  </head>
+  <body class="login-shell">
+    <div class="container">
+      <div class="row justify-content-center min-vh-100 align-items-center py-5">
+        <div class="col-12 col-md-7 col-lg-5">
+          <div class="crm-card shadow-sm">
+            <div class="card-body p-4 p-lg-5">
+              <p class="text-uppercase small fw-semibold text-body-secondary mb-2">Bridge Wireless</p>
+              <h1 class="h3 mb-3">CRM Sign In</h1>
+              <p class="text-body-secondary mb-4">Internal access for sales, management, and account teams.</p>
+
+              {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                  <div class="mb-3">
+                    {% for category, message in messages %}
+                      <div class="alert alert-{{ category }}" role="alert">{{ message }}</div>
+                    {% endfor %}
+                  </div>
+                {% endif %}
+              {% endwith %}
+
+              <form method="post" novalidate>
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="mb-3">
+                  <label class="form-label" for="email">Email</label>
+                  <input class="form-control" id="email" name="email" type="email" autocomplete="username" required>
+                </div>
+                <div class="mb-4">
+                  <label class="form-label" for="password">Password</label>
+                  <input class="form-control" id="password" name="password" type="password" autocomplete="current-password" required>
+                </div>
+                <button class="btn btn-primary w-100" type="submit">Sign In</button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

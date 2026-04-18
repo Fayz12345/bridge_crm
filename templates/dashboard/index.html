@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard | {{ config.APP_NAME }}{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
+  <div>
+    <p class="text-uppercase small fw-semibold text-body-secondary mb-1">Foundation Phase</p>
+    <h1 class="h3 mb-1">Sales dashboard</h1>
+    <p class="text-body-secondary mb-0">This is the initial CRM shell. Leads, opportunities, products, and communications are staged for the next phases.</p>
+  </div>
+  <a class="btn btn-primary" href="{{ url_for('accounts.create_view') }}">New Account</a>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-12 col-sm-6 col-xl-3">
+    <div class="crm-card h-100">
+      <div class="card-body">
+        <p class="small text-uppercase text-body-secondary fw-semibold mb-2">Accounts</p>
+        <div class="display-6">{{ metrics.accounts }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-sm-6 col-xl-3">
+    <div class="crm-card h-100">
+      <div class="card-body">
+        <p class="small text-uppercase text-body-secondary fw-semibold mb-2">Leads</p>
+        <div class="display-6">{{ metrics.leads }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-sm-6 col-xl-3">
+    <div class="crm-card h-100">
+      <div class="card-body">
+        <p class="small text-uppercase text-body-secondary fw-semibold mb-2">Opportunities</p>
+        <div class="display-6">{{ metrics.opportunities }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-sm-6 col-xl-3">
+    <div class="crm-card h-100">
+      <div class="card-body">
+        <p class="small text-uppercase text-body-secondary fw-semibold mb-2">Pipeline Value</p>
+        <div class="display-6">${{ "{:,.0f}".format(metrics.pipeline_value) }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="crm-card">
+  <div class="card-body">
+    <div class="row g-4">
+      <div class="col-lg-6">
+        <h2 class="h5 mb-3">Lead Funnel</h2>
+        <div class="row g-2">
+          {% for status, count in lead_counts.items() %}
+          <div class="col-6">
+            <div class="p-3 rounded-3 bg-body-tertiary h-100">
+              <div class="crm-field-label">{{ status.replace('_', ' ') }}</div>
+              <div class="h4 mb-0">{{ count }}</div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="col-lg-6">
+        <h2 class="h5 mb-3">Recent Opportunities</h2>
+        {% for opportunity in opportunities %}
+        <div class="p-3 rounded-3 bg-body-tertiary mb-2">
+          <div class="fw-semibold">{{ opportunity.title }}</div>
+          <div class="small text-body-secondary">{{ opportunity.account_name }} · {{ opportunity.stage.replace('_', ' ') }}</div>
+        </div>
+        {% else %}
+        <p class="text-body-secondary mb-0">No opportunities yet.</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

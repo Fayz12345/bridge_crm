@@ -1,0 +1,35 @@
+{% if custom_field_definitions %}
+<div class="row g-3">
+  {% for field in custom_field_definitions %}
+  {% set field_name = 'cf__' ~ field.field_key %}
+  {% set field_value = custom_field_values.get(field.field_key) %}
+  <div class="col-12 {% if field.field_type in ['text', 'number', 'date', 'select', 'checkbox'] %}col-md-6{% endif %}">
+    <label class="form-label" for="{{ field_name }}">{{ field.field_label }}</label>
+    {% if field.field_type == 'textarea' %}
+    <textarea class="form-control" id="{{ field_name }}" name="{{ field_name }}" rows="4" {% if field.is_required %}required{% endif %}>{{ field_value or '' }}</textarea>
+    {% elif field.field_type == 'select' %}
+    <select class="form-select" id="{{ field_name }}" name="{{ field_name }}" {% if field.is_required %}required{% endif %}>
+      <option value="">Select an option</option>
+      {% for option in field.options_json or [] %}
+      <option value="{{ option }}" {% if field_value == option %}selected{% endif %}>{{ option }}</option>
+      {% endfor %}
+    </select>
+    {% elif field.field_type == 'date' %}
+    <input class="form-control" id="{{ field_name }}" name="{{ field_name }}" type="date" value="{{ field_value or '' }}" {% if field.is_required %}required{% endif %}>
+    {% elif field.field_type == 'number' %}
+    <input class="form-control" id="{{ field_name }}" name="{{ field_name }}" type="number" step="any" value="{{ field_value or '' }}" {% if field.is_required %}required{% endif %}>
+    {% elif field.field_type == 'checkbox' %}
+    <div class="form-check mt-2">
+      <input class="form-check-input" id="{{ field_name }}" name="{{ field_name }}" type="checkbox" {% if field_value %}checked{% endif %}>
+      <label class="form-check-label" for="{{ field_name }}">{{ field.help_text or 'Yes / No' }}</label>
+    </div>
+    {% else %}
+    <input class="form-control" id="{{ field_name }}" name="{{ field_name }}" value="{{ field_value or '' }}" placeholder="{{ field.placeholder or '' }}" {% if field.is_required %}required{% endif %}>
+    {% endif %}
+    {% if field.help_text and field.field_type != 'checkbox' %}
+    <div class="form-text">{{ field.help_text }}</div>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% endif %}

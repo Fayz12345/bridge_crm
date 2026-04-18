@@ -1,0 +1,10 @@
+{% if custom_field_rows %}
+<div class="row g-3">
+  {% for field in custom_field_rows %}
+  <div class="col-md-6">
+    <div class="crm-field-label">{{ field.field_label }}</div>
+    <div>{{ field.display_value }}</div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}

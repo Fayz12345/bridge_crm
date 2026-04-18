@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block title %}Product | {{ config.APP_NAME }}{% endblock %}
+
+{% block content %}
+{% if not product %}
+<div class="crm-card">
+  <div class="card-body">
+    <p class="mb-0">Product not found.</p>
+  </div>
+</div>
+{% else %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <p class="text-uppercase small fw-semibold text-body-secondary mb-1">Product Detail</p>
+    <h1 class="h3 mb-0">{{ product.brand_name }} {{ product.model_name }}</h1>
+  </div>
+  <a class="btn btn-outline-secondary" href="{{ url_for('products.list_view') }}">Back to Products</a>
+</div>
+
+<div class="crm-card">
+  <div class="card-body">
+    <div class="row g-3">
+      <div class="col-md-4"><div class="crm-field-label">Serial</div><div>{{ product.serial_number or "—" }}</div></div>
+      <div class="col-md-4"><div class="crm-field-label">IMEI</div><div>{{ product.imei_1 or "—" }}</div></div>
+      <div class="col-md-4"><div class="crm-field-label">Category</div><div>{{ product.category_name or "—" }}</div></div>
+      <div class="col-md-4"><div class="crm-field-label">Color</div><div>{{ product.color or "—" }}</div></div>
+      <div class="col-md-4"><div class="crm-field-label">RAM</div><div>{{ product.ram or "—" }}</div></div>
+      <div class="col-md-4"><div class="crm-field-label">ROM</div><div>{{ product.rom or "—" }}</div></div>
+      <div class="col-md-4"><div class="crm-field-label">Outward Grade</div><div>{{ product.outward_grade or "—" }}</div></div>
+      <div class="col-md-4"><div class="crm-field-label">Inward Grade</div><div>{{ product.inward_grade or "—" }}</div></div>
+      <div class="col-md-4"><div class="crm-field-label">Status</div><div>{{ product.item_status or "—" }}</div></div>
+      <div class="col-md-4"><div class="crm-field-label">Sales Price</div><div>{% if product.outward_sales_price %}${{ "{:,.2f}".format(product.outward_sales_price) }}{% else %}—{% endif %}</div></div>
+      <div class="col-md-4"><div class="crm-field-label">Cost</div><div>{% if product.inward_item_cost %}${{ "{:,.2f}".format(product.inward_item_cost) }}{% else %}—{% endif %}</div></div>
+      <div class="col-md-4"><div class="crm-field-label">Bin</div><div>{{ product.bin_location or "—" }}</div></div>
+      {% if custom_field_rows %}
+      <div class="col-12">
+        <hr>
+        <h2 class="h5 mb-3">Custom Fields</h2>
+        {% include "components/custom_fields_display.html" %}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% if custom_field_definitions %}
+<div class="crm-card mt-3">
+  <div class="card-body">
+    <h2 class="h5 mb-3">Edit Custom Fields</h2>
+    <form method="post" action="{{ url_for('products.update_custom_fields_view', product_id=product.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      {% set custom_field_values = product.custom_fields or {} %}
+      {% include "components/custom_fields_form.html" %}
+      <button class="btn btn-outline-primary mt-3" type="submit">Save Custom Fields</button>
+    </form>
+  </div>
+</div>
+{% endif %}
+{% endif %}
+{% endblock %}

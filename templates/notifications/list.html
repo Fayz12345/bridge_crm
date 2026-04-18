@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block title %}Notifications | {{ config.APP_NAME }}{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
+  <div>
+    <p class="text-uppercase small fw-semibold text-body-secondary mb-1">Notifications</p>
+    <h1 class="h3 mb-1">Your activity alerts</h1>
+    <p class="text-body-secondary mb-0">Mentions and future CRM alerts land here.</p>
+  </div>
+  <form method="post" action="{{ url_for('notifications.read_all_view') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="next" value="{{ request.full_path if request.query_string else request.path }}">
+    <button class="btn btn-outline-primary" type="submit">Mark All Read</button>
+  </form>
+</div>
+
+<div class="d-flex gap-2 mb-3">
+  <a class="btn {% if active_filter == 'all' %}btn-primary{% else %}btn-outline-secondary{% endif %}" href="{{ url_for('notifications.list_view') }}">All</a>
+  <a class="btn {% if active_filter == 'unread' %}btn-primary{% else %}btn-outline-secondary{% endif %}" href="{{ url_for('notifications.list_view', filter='unread') }}">Unread</a>
+</div>
+
+<div class="crm-card">
+  <div class="card-body">
+    {% for notification in notifications %}
+    <div class="border rounded-3 p-3 mb-2 {% if not notification.is_read %}border-primary-subtle{% endif %}">
+      <div class="d-flex justify-content-between align-items-start gap-3">
+        <div>
+          <div class="fw-semibold">{{ notification.title }}</div>
+          <div class="small text-body-secondary mb-2">{{ notification.created_at.strftime("%Y-%m-%d %H:%M") if notification.created_at else "" }}</div>
+          <div>{{ notification.message }}</div>
+          {% if notification.link_url %}
+          <a class="small text-decoration-none" href="{{ notification.link_url }}">Open record</a>
+          {% endif %}
+        </div>
+        <div class="text-end">
+          {% if notification.is_read %}
+          <span class="badge text-bg-light">Read</span>
+          {% else %}
+          <form method="post" action="{{ url_for('notifications.read_view', notification_id=notification.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="next" value="{{ request.full_path if request.query_string else request.path }}">
+            <button class="btn btn-sm btn-outline-secondary" type="submit">Mark Read</button>
+          </form>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {% else %}
+    <p class="text-body-secondary mb-0">No notifications yet.</p>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

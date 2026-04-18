@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block title %}Setup | {{ config.APP_NAME }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <p class="text-uppercase small fw-semibold text-body-secondary mb-1">Setup</p>
+    <h1 class="h3 mb-0">Admin configuration</h1>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-6">
+    <div class="crm-card h-100">
+      <div class="card-body">
+        <h2 class="h5">Users</h2>
+        <p class="text-body-secondary">Create admins, managers, and reps, and control who can sign in.</p>
+        <a class="btn btn-primary" href="{{ url_for('users.list_view') }}">Manage Users</a>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="crm-card h-100">
+      <div class="card-body">
+        <h2 class="h5">Custom Fields</h2>
+        <p class="text-body-secondary">Add custom fields to Accounts, Leads, Opportunities, and Products.</p>
+        <a class="btn btn-primary" href="{{ url_for('custom_fields.list_view') }}">Manage Custom Fields</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
