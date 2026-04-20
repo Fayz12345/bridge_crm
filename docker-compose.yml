@@ -1,0 +1,72 @@
+services:
+  # --------------- PRODUCTION ---------------
+  crm-prod:
+    build: .
+    env_file: .env.production
+    ports:
+      - "127.0.0.1:5001:5000"
+    depends_on:
+      db-prod:
+        condition: service_healthy
+    restart: unless-stopped
+    volumes:
+      - documents-prod:/app/data/documents
+    profiles: [production]
+
+  db-prod:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: bridge_crm
+      POSTGRES_USER: bridgecrm
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password_prod
+    secrets:
+      - db_password_prod
+    volumes:
+      - pgdata-prod:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bridgecrm -d bridge_crm"]
+      interval: 10s
+      retries: 5
+    restart: unless-stopped
+    profiles: [production]
+
+  # --------------- SANDBOX ---------------
+  crm-sandbox:
+    build: .
+    env_file: .env.sandbox
+    ports:
+      - "127.0.0.1:5002:5000"
+    depends_on:
+      db-sandbox:
+        condition: service_healthy
+    volumes:
+      - documents-sandbox:/app/data/documents
+    profiles: [sandbox]
+
+  db-sandbox:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: bridge_crm_sandbox
+      POSTGRES_USER: bridgecrm_sandbox
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password_sandbox
+    secrets:
+      - db_password_sandbox
+    volumes:
+      - pgdata-sandbox:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bridgecrm_sandbox -d bridge_crm_sandbox"]
+      interval: 10s
+      retries: 5
+    profiles: [sandbox]
+
+secrets:
+  db_password_prod:
+    file: ./secrets/db_password_prod.txt
+  db_password_sandbox:
+    file: ./secrets/db_password_sandbox.txt
+
+volumes:
+  pgdata-prod:
+  pgdata-sandbox:
+  documents-prod:
+  documents-sandbox:

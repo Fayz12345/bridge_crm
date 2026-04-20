@@ -1,6 +1,6 @@
 <div class="crm-card">
   <div class="card-body">
-    <h2 class="h5 mb-3">Activity</h2>
+    <h2 class="h5 mb-3 pb-2" style="border-bottom:2px solid var(--crm-teal)">Activity</h2>
     {% for activity in activities %}
     <div class="crm-activity">
       <div class="crm-field-label">{{ activity.activity_type.replace('_', ' ') }}</div>
@@ -20,7 +20,10 @@
       </div>
     </div>
     {% else %}
-    <p class="text-body-secondary mb-0">No activity yet.</p>
+    <div class="crm-empty-state">
+      <span class="material-symbols-outlined">timeline</span>
+      No activity yet.
+    </div>
     {% endfor %}
   </div>
 </div>

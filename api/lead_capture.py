@@ -9,7 +9,11 @@ from bridge_crm.crm.leads.queries import create_lead
 from bridge_crm.db.engine import get_connection
 from bridge_crm.db.schema import crm_rate_limits
 
-lead_capture_bp = Blueprint("lead_capture", __name__)
+lead_capture_bp = Blueprint(
+    "lead_capture",
+    __name__,
+    template_folder="../templates",
+)
 
 
 def _origin_allowed(origin: str | None) -> bool:

@@ -3,7 +3,12 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#0A2540">
     <title>{% block title %}{{ config.APP_NAME }}{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0">
     <link rel="preconnect" href="https://cdn.jsdelivr.net">
     <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -12,28 +17,40 @@
   </head>
   <body hx-headers='{"X-CSRFToken": "{{ csrf_token() }}"}'>
     {% if g.user %}
-    <nav class="navbar navbar-expand-lg crm-navbar border-bottom">
+    <nav class="navbar navbar-expand-lg navbar-dark crm-navbar">
       <div class="container">
-        <a class="navbar-brand fw-semibold" href="{{ url_for('dashboard.index') }}">{{ config.APP_NAME }}</a>
+        <a class="navbar-brand d-flex align-items-center gap-2" href="{{ url_for('dashboard.index') }}">
+          <span class="material-symbols-outlined" style="font-size:24px;color:var(--crm-teal)">cell_tower</span>
+          {{ config.APP_NAME }}
+        </a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#crmNav" aria-controls="crmNav" aria-expanded="false" aria-label="Toggle navigation">
           <span class="navbar-toggler-icon"></span>
         </button>
         <div class="collapse navbar-collapse" id="crmNav">
           <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-            <li class="nav-item"><a class="nav-link {% if current_endpoint.startswith('dashboard.') %}active{% endif %}" href="{{ url_for('dashboard.index') }}">Dashboard</a></li>
-            <li class="nav-item"><a class="nav-link {% if current_endpoint.startswith('reports.') %}active{% endif %}" href="{{ url_for('reports.index') }}">Reports</a></li>
-            <li class="nav-item"><a class="nav-link {% if current_endpoint.startswith('leads.') %}active{% endif %}" href="{{ url_for('leads.list_view') }}">Leads</a></li>
-            <li class="nav-item"><a class="nav-link {% if current_endpoint.startswith('opportunities.') %}active{% endif %}" href="{{ url_for('opportunities.list_view') }}">Opportunities</a></li>
-            <li class="nav-item"><a class="nav-link {% if current_endpoint.startswith('accounts.') %}active{% endif %}" href="{{ url_for('accounts.list_view') }}">Accounts</a></li>
-            <li class="nav-item"><a class="nav-link {% if current_endpoint.startswith('products.') %}active{% endif %}" href="{{ url_for('products.list_view') }}">Products</a></li>
-            <li class="nav-item"><a class="nav-link {% if current_endpoint.startswith('notifications.') %}active{% endif %}" href="{{ url_for('notifications.list_view') }}">Notifications{% if unread_notifications_count %} ({{ unread_notifications_count }}){% endif %}</a></li>
+            <li class="nav-item"><a class="nav-link {% if current_endpoint.startswith('dashboard.') %}active{% endif %}" href="{{ url_for('dashboard.index') }}"><span class="material-symbols-outlined nav-icon">dashboard</span> Dashboard</a></li>
+            <li class="nav-item"><a class="nav-link {% if current_endpoint.startswith('reports.') %}active{% endif %}" href="{{ url_for('reports.index') }}"><span class="material-symbols-outlined nav-icon">bar_chart</span> Reports</a></li>
+            <li class="nav-item"><a class="nav-link {% if current_endpoint.startswith('marketing.') %}active{% endif %}" href="{{ url_for('marketing.index') }}"><span class="material-symbols-outlined nav-icon">campaign</span> Marketing</a></li>
+            <li class="nav-item"><a class="nav-link {% if current_endpoint.startswith('leads.') %}active{% endif %}" href="{{ url_for('leads.list_view') }}"><span class="material-symbols-outlined nav-icon">person_search</span> Leads</a></li>
+            <li class="nav-item"><a class="nav-link {% if current_endpoint.startswith('opportunities.') %}active{% endif %}" href="{{ url_for('opportunities.list_view') }}"><span class="material-symbols-outlined nav-icon">handshake</span> Opportunities</a></li>
+            <li class="nav-item"><a class="nav-link {% if current_endpoint.startswith('accounts.') %}active{% endif %}" href="{{ url_for('accounts.list_view') }}"><span class="material-symbols-outlined nav-icon">business</span> Accounts</a></li>
+            <li class="nav-item"><a class="nav-link {% if current_endpoint.startswith('products.') %}active{% endif %}" href="{{ url_for('products.list_view') }}"><span class="material-symbols-outlined nav-icon">inventory_2</span> Products</a></li>
             {% if g.user and g.user.role == 'admin' %}
-            <li class="nav-item"><a class="nav-link {% if current_endpoint.startswith('setup.') or current_endpoint.startswith('users.') or current_endpoint.startswith('custom_fields.') %}active{% endif %}" href="{{ url_for('setup.index') }}">Setup</a></li>
+            <li class="nav-item"><a class="nav-link {% if current_endpoint.startswith('setup.') or current_endpoint.startswith('users.') or current_endpoint.startswith('custom_fields.') %}active{% endif %}" href="{{ url_for('setup.index') }}"><span class="material-symbols-outlined nav-icon">settings</span> Setup</a></li>
             {% endif %}
           </ul>
-          <div class="d-flex align-items-center gap-3">
-            <span class="small text-body-secondary">{{ g.user.full_name if g.user else '' }}{% if g.user %} · {{ g.user.role|title }}{% endif %}</span>
-            <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('auth.logout') }}">Log Out</a>
+          <div class="d-flex align-items-center gap-2 gap-xl-3 ms-lg-3 crm-navbar-actions">
+            <span class="small crm-user-meta" style="color:rgba(255,255,255,0.55)">{{ g.user.full_name if g.user else '' }}{% if g.user %} · {{ g.user.role|title }}{% endif %}</span>
+            <a
+              class="crm-icon-link {% if current_endpoint.startswith('notifications.') %}active{% endif %}"
+              href="{{ url_for('notifications.list_view') }}"
+              aria-label="Notifications"
+              title="Notifications"
+            >
+              <span class="material-symbols-outlined">notifications</span>
+              {% if unread_notifications_count %}<span class="badge bg-danger rounded-pill crm-icon-badge">{{ unread_notifications_count }}</span>{% endif %}
+            </a>
+            <a class="btn btn-outline-light btn-sm crm-logout-btn" style="border-color:rgba(255,255,255,0.2);font-size:0.75rem" href="{{ url_for('auth.logout') }}">Logout</a>
           </div>
         </div>
       </div>

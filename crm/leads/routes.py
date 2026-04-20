@@ -18,7 +18,12 @@ from bridge_crm.crm.leads.queries import (
 )
 from bridge_crm.crm.opportunities.queries import create_contact, create_opportunity
 
-leads_bp = Blueprint("leads", __name__, url_prefix="/leads")
+leads_bp = Blueprint(
+    "leads",
+    __name__,
+    url_prefix="/leads",
+    template_folder="../../templates",
+)
 
 LEAD_FIELDS = [
     "first_name",

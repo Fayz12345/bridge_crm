@@ -3,34 +3,58 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#0A2540">
     <title>Bridge CRM Lead Form</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="preconnect" href="https://cdn.jsdelivr.net">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
       body {
         min-height: 100vh;
-        background: linear-gradient(160deg, #f5f1e7 0%, #edf4f8 100%);
-        color: #18222f;
+        font-family: 'Open Sans', sans-serif;
+        background: linear-gradient(135deg, #0A2540 0%, #1E293B 100%);
+        color: #333;
       }
+      h1, h2, h3, .form-label {
+        font-family: 'Inter', sans-serif;
+      }
+      .form-label { font-weight: 600; font-size: 0.8125rem; color: #0F234C; }
       .lead-shell {
         max-width: 760px;
         margin: 2rem auto;
         padding: 1rem;
       }
       .lead-card {
-        background: rgba(255,255,255,0.92);
-        border: 1px solid #dbe4ec;
-        border-radius: 1rem;
-        box-shadow: 0 1rem 3rem rgba(24,34,47,0.08);
+        background: #fff;
+        border: 1px solid #E2E8F0;
+        border-radius: 10px;
+        box-shadow: 0 2px 8px rgba(10, 37, 64, 0.08);
       }
+      .form-control:focus, .form-select:focus {
+        border-color: #00A99D;
+        box-shadow: 0 0 0 0.2rem rgba(0, 169, 157, 0.15);
+      }
+      .btn-primary {
+        background: #00A99D; border-color: #00A99D;
+        font-family: 'Inter', sans-serif; font-weight: 700;
+        border-radius: 6px;
+      }
+      .btn-primary:hover { background: #008F85; border-color: #008F85; }
+      .alert { border-radius: 6px; font-size: 0.875rem; }
     </style>
   </head>
   <body>
     <div class="lead-shell">
+      <div class="text-center mb-4">
+        <div style="font-family:'Inter',sans-serif;font-weight:700;font-size:1.25rem;color:#fff;letter-spacing:-0.01em">
+          <span style="color:#00A99D">&#9672;</span> Bridge Wireless
+        </div>
+      </div>
       <div class="lead-card p-4 p-lg-5">
-        <p class="text-uppercase small fw-semibold text-secondary mb-2">Bridge Wireless</p>
-        <h1 class="h3 mb-2">Talk to our wholesale team</h1>
-        <p class="text-secondary mb-4">Tell us what models or categories you need and our sales team will reach out.</p>
+        <h1 class="h3 mb-2" style="color:#0F234C">Talk to our wholesale team</h1>
+        <p class="mb-4" style="color:#555">Tell us what models or categories you need and our sales team will reach out.</p>
         <div id="message" class="mb-3"></div>
         <form id="lead-form" novalidate>
           <div class="row g-3">
@@ -62,6 +86,7 @@
           <button class="btn btn-primary mt-4" type="submit">Submit</button>
         </form>
       </div>
+      <p class="text-center mt-4" style="color:rgba(255,255,255,0.4);font-size:0.75rem">Bridge Wireless &copy; 2026</p>
     </div>
 
     <script>

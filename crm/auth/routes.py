@@ -1,7 +1,8 @@
 from functools import wraps
+from urllib.parse import urlparse
 
 from flask import Blueprint, current_app, flash, g, redirect, render_template, request, session, url_for
-from werkzeug.security import check_password_hash
+from werkzeug.security import check_password_hash, generate_password_hash
 
 from bridge_crm.crm.auth.queries import (
     clear_login_attempts,
@@ -10,7 +11,12 @@ from bridge_crm.crm.auth.queries import (
     record_login_attempt,
 )
 
-auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
+auth_bp = Blueprint(
+    "auth",
+    __name__,
+    url_prefix="/auth",
+    template_folder="../../templates",
+)
 
 
 def login_required(view):
@@ -62,8 +68,11 @@ def login():
             flash("Too many failed attempts. Try again in 15 minutes.", "danger")
             return render_template("auth/login.html"), 429
 
+        _DUMMY_HASH = generate_password_hash("dummy-constant-time-pad")
         user = get_user_by_email(email) if email else None
-        if not user or not check_password_hash(user["password_hash"], password):
+        pw_hash = user["password_hash"] if user else _DUMMY_HASH
+        password_valid = check_password_hash(pw_hash, password)
+        if not user or not password_valid:
             record_login_attempt(email, ip_address, successful=False)
             flash("Invalid email or password.", "danger")
             return render_template("auth/login.html"), 401
@@ -77,7 +86,9 @@ def login():
         session.clear()
         session["user_id"] = user["id"]
         session["user_name"] = user["full_name"]
-        next_url = request.args.get("next") or url_for("dashboard.index")
+        next_url = request.args.get("next", "")
+        if not next_url or urlparse(next_url).netloc:
+            next_url = url_for("dashboard.index")
         return redirect(next_url)
 
     return render_template("auth/login.html")

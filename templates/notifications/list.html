@@ -24,7 +24,7 @@
 <div class="crm-card">
   <div class="card-body">
     {% for notification in notifications %}
-    <div class="border rounded-3 p-3 mb-2 {% if not notification.is_read %}border-primary-subtle{% endif %}">
+    <div class="border rounded-3 p-3 mb-2 {% if not notification.is_read %}crm-unread{% endif %}">
       <div class="d-flex justify-content-between align-items-start gap-3">
         <div>
           <div class="fw-semibold">{{ notification.title }}</div>
@@ -48,7 +48,10 @@
       </div>
     </div>
     {% else %}
-    <p class="text-body-secondary mb-0">No notifications yet.</p>
+    <div class="crm-empty-state">
+      <span class="material-symbols-outlined">notifications</span>
+      No notifications yet.
+    </div>
     {% endfor %}
   </div>
 </div>

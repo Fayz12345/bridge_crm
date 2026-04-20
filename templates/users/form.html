@@ -9,7 +9,7 @@
     <p class="text-uppercase small fw-semibold text-body-secondary mb-1">Users</p>
     <h1 class="h3 mb-0">{{ page_title }}</h1>
   </div>
-  <a class="btn btn-outline-secondary" href="{{ url_for('users.list_view') }}">Back to Users</a>
+  <a class="btn btn-outline-secondary" href="{{ url_for('users.list_view') }}"><span class="material-symbols-outlined">arrow_back</span> Back to Users</a>
 </div>
 
 <div class="crm-card">
@@ -47,7 +47,7 @@
       </div>
 
       <div class="d-flex gap-2 mt-4">
-        <button class="btn btn-primary" type="submit">{{ submit_label }}</button>
+        <button class="btn btn-primary" type="submit"><span class="material-symbols-outlined">save</span> {{ submit_label }}</button>
         <a class="btn btn-outline-secondary" href="{{ url_for('users.list_view') }}">Cancel</a>
       </div>
     </form>

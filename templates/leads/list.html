@@ -9,7 +9,7 @@
     <h1 class="h3 mb-1">Inbound sales pipeline</h1>
     <p class="text-body-secondary mb-0">Track new prospects, qualify them, and convert them into accounts and opportunities.</p>
   </div>
-  <a class="btn btn-primary" href="{{ url_for('leads.create_view') }}">New Lead</a>
+  <a class="btn btn-primary" href="{{ url_for('leads.create_view') }}"><span class="material-symbols-outlined">add</span> New Lead</a>
 </div>
 
 <div class="d-flex flex-wrap gap-2 mb-3">
@@ -24,7 +24,10 @@
       <input type="hidden" name="status" value="{{ active_status }}">
       <div class="col-12 col-lg-6">
         <label class="form-label" for="q">Search leads</label>
-        <input class="form-control" id="q" name="q" value="{{ search_term }}" placeholder="Name, email, company, interest">
+        <div class="input-group">
+          <span class="input-group-text bg-white border-end-0"><span class="material-symbols-outlined" style="font-size:18px;color:var(--crm-text-secondary)">search</span></span>
+          <input class="form-control border-start-0" id="q" name="q" value="{{ search_term }}" placeholder="Name, email, company, interest">
+        </div>
       </div>
       <div class="col-auto">
         <button class="btn btn-outline-primary" type="submit">Search</button>
@@ -61,7 +64,10 @@
         </tr>
         {% else %}
         <tr>
-          <td colspan="6" class="text-center py-5 text-body-secondary">No leads found.</td>
+          <td colspan="6" class="crm-empty-state">
+            <span class="material-symbols-outlined">person_search</span>
+            No leads found.
+          </td>
         </tr>
         {% endfor %}
       </tbody>

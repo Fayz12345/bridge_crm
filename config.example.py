@@ -1,6 +1,10 @@
 # Flask
 CRM_APP_NAME = "Bridge CRM"
 SECRET_KEY = "replace-with-a-random-64-char-secret"
+COMPANY_NAME = "Bridge Wireless"
+COMPANY_ADDRESS = "Toronto, ON, Canada"
+COMPANY_PHONE = ""
+COMPANY_EMAIL = ""
 SESSION_COOKIE_NAME = "bridge_crm_session"
 SESSION_COOKIE_SECURE = True
 SESSION_COOKIE_SAMESITE = "Lax"
@@ -25,10 +29,25 @@ SMTP_HOST = "smtp.office365.com"
 SMTP_PORT = 587
 SMTP_USER = "crm@yourdomain.com"
 SMTP_PASSWORD = "replace-me"
+EMAIL_PROVIDER = "smtp"
+M365_TENANT_ID = ""
+M365_CLIENT_ID = ""
+M365_CLIENT_SECRET = ""
+M365_SENDER = ""
 
 # Public lead-form allowlist
 CORS_ALLOWED_ORIGINS = "https://www.yourdomain.com,https://forms.yourdomain.com"
+LEAD_FORM_ALLOWED_PARENTS = "https://bridge-wireless.com,https://www.bridge-wireless.com"
 
 # Auth controls
 LOGIN_RATE_LIMIT_COUNT = 5
 LOGIN_RATE_LIMIT_WINDOW_SECONDS = 900
+
+# Quote / invoice documents
+DOCUMENT_STORAGE_DIR = ""
+QUOTE_VALID_DAYS = 30
+INVOICE_PAYMENT_TERMS_DAYS = 30
+INVOICE_PAYMENT_TERMS_TEXT = "Net 30"
+DOCUMENT_TERMS_TEXT = "Prices are valid for the stated period and subject to product availability."
+DOCUMENT_FOOTER_TEXT = "Thank you for your business."
+DOCUMENT_TAX_RATE = 0

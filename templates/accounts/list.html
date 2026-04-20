@@ -9,7 +9,7 @@
     <h1 class="h3 mb-1">Companies and customers</h1>
     <p class="text-body-secondary mb-0">This is the first operational CRM module built from the implementation plan.</p>
   </div>
-  <a class="btn btn-primary" href="{{ url_for('accounts.create_view') }}">New Account</a>
+  <a class="btn btn-primary" href="{{ url_for('accounts.create_view') }}"><span class="material-symbols-outlined">add</span> New Account</a>
 </div>
 
 <div class="crm-card mb-3">
@@ -17,7 +17,10 @@
     <form class="row g-2 align-items-end" method="get">
       <div class="col-12 col-lg-6">
         <label class="form-label" for="q">Search accounts</label>
-        <input class="form-control" id="q" name="q" value="{{ search_term }}" placeholder="Company, contact, email, ERP client ID">
+        <div class="input-group">
+          <span class="input-group-text bg-white border-end-0"><span class="material-symbols-outlined" style="font-size:18px;color:var(--crm-text-secondary)">search</span></span>
+          <input class="form-control border-start-0" id="q" name="q" value="{{ search_term }}" placeholder="Company, contact, email, ERP client ID">
+        </div>
       </div>
       <div class="col-auto">
         <button class="btn btn-outline-primary" type="submit">Search</button>
@@ -59,7 +62,10 @@
         </tr>
         {% else %}
         <tr>
-          <td colspan="5" class="text-center py-5 text-body-secondary">No accounts found.</td>
+          <td colspan="5" class="crm-empty-state">
+            <span class="material-symbols-outlined">business</span>
+            No accounts found.
+          </td>
         </tr>
         {% endfor %}
       </tbody>

@@ -3,7 +3,7 @@
   "short_name": "BridgeCRM",
   "start_url": "/crm/dashboard/",
   "display": "standalone",
-  "background_color": "#eef2f7",
-  "theme_color": "#0d6e6e",
+  "background_color": "#F8F9FA",
+  "theme_color": "#0A2540",
   "icons": []
 }

@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <style>
+      @page {
+        margin: 24px;
+        size: A4;
+      }
+      body {
+        color: #14223b;
+        font-family: "DejaVu Sans", sans-serif;
+        font-size: 12px;
+        line-height: 1.45;
+      }
+      .header,
+      .meta,
+      .totals {
+        width: 100%;
+      }
+      .brand-kicker {
+        color: #00a99d;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      h1 {
+        font-size: 28px;
+        margin: 4px 0 8px;
+      }
+      h2 {
+        border-bottom: 2px solid #00a99d;
+        font-size: 14px;
+        margin: 0 0 10px;
+        padding-bottom: 6px;
+        text-transform: uppercase;
+      }
+      .grid {
+        display: table;
+        table-layout: fixed;
+        width: 100%;
+      }
+      .col {
+        display: table-cell;
+        vertical-align: top;
+      }
+      .right {
+        text-align: right;
+      }
+      .muted {
+        color: #5f6b7a;
+      }
+      .card {
+        background: #f5f7fb;
+        border: 1px solid #d8dee8;
+        border-radius: 12px;
+        margin: 18px 0;
+        padding: 14px 16px;
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+      }
+      th,
+      td {
+        border-bottom: 1px solid #d8dee8;
+        padding: 8px 6px;
+        vertical-align: top;
+      }
+      th {
+        color: #5f6b7a;
+        font-size: 11px;
+        font-weight: 700;
+        text-align: left;
+        text-transform: uppercase;
+      }
+      .totals td {
+        border-bottom: none;
+        padding: 4px 0;
+      }
+      .totals .label {
+        color: #5f6b7a;
+        text-align: right;
+      }
+      .totals .grand td {
+        border-top: 2px solid #14223b;
+        font-size: 14px;
+        font-weight: 700;
+        padding-top: 8px;
+      }
+      .footer {
+        border-top: 1px solid #d8dee8;
+        margin-top: 26px;
+        padding-top: 14px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="grid header">
+      <div class="col">
+        <div class="brand-kicker">Bridge Wireless</div>
+        <h1>{{ heading }}</h1>
+        <div><strong>{{ company.name }}</strong></div>
+        {% if company.address %}
+        <div class="muted">{{ company.address|nl2br }}</div>
+        {% endif %}
+        {% if company.phone %}
+        <div class="muted">{{ company.phone }}</div>
+        {% endif %}
+        {% if company.email %}
+        <div class="muted">{{ company.email }}</div>
+        {% endif %}
+      </div>
+      <div class="col right">
+        <table class="meta">
+          <tr>
+            <td class="label muted">{{ document_label }}</td>
+            <td><strong>{{ document_number }}</strong></td>
+          </tr>
+          <tr>
+            <td class="label muted">{{ document_date_label }}</td>
+            <td>{{ generated_at.strftime("%Y-%m-%d") }}</td>
+          </tr>
+          <tr>
+            <td class="label muted">{{ secondary_date_label }}</td>
+            <td>{{ secondary_date.strftime("%Y-%m-%d") }}</td>
+          </tr>
+          <tr>
+            <td class="label muted">Currency</td>
+            <td>{{ opportunity.currency }}</td>
+          </tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Customer Information</h2>
+      <div><strong>{{ opportunity.account_name }}</strong></div>
+      <div>
+        {{ ((opportunity.contact_first_name or "") ~ " " ~ (opportunity.contact_last_name or "")).strip() or opportunity.account_name }}
+      </div>
+      {% if opportunity.contact_email or opportunity.account_email %}
+      <div class="muted">{{ opportunity.contact_email or opportunity.account_email }}</div>
+      {% endif %}
+      {% if opportunity.contact_phone or opportunity.account_phone %}
+      <div class="muted">
+        {{ opportunity.contact_phone_prefix or opportunity.account_phone_prefix or "" }}
+        {{ opportunity.contact_phone or opportunity.account_phone }}
+      </div>
+      {% endif %}
+      {% if opportunity.account_address_line_1 %}
+      <div class="muted">{{ opportunity.account_address_line_1 }}</div>
+      {% endif %}
+      {% if opportunity.account_address_line_2 %}
+      <div class="muted">{{ opportunity.account_address_line_2 }}</div>
+      {% endif %}
+      {% set city_line = [
+        opportunity.account_city,
+        opportunity.account_state_province,
+        opportunity.account_postal_code
+      ]|select|join(', ') %}
+      {% if city_line %}
+      <div class="muted">{{ city_line }}</div>
+      {% endif %}
+      {% if opportunity.account_country %}
+      <div class="muted">{{ opportunity.account_country }}</div>
+      {% endif %}
+    </div>
+
+    <h2>Line Items</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Brand</th>
+          <th>Model</th>
+          <th>Grade</th>
+          <th>Storage</th>
+          <th>Qty</th>
+          <th>Unit Price</th>
+          <th>Line Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for line in line_items %}
+        <tr>
+          <td>{{ line.brand }}</td>
+          <td>{{ line.model }}</td>
+          <td>{{ line.grade or "—" }}</td>
+          <td>{{ line.storage or "—" }}</td>
+          <td>{{ line.quantity }}</td>
+          <td>{{ "{:,.2f}".format(line.unit_price) }}</td>
+          <td>{{ "{:,.2f}".format(line.line_total) }}</td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="7" class="muted">No line items are attached to this opportunity yet.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <div class="card">
+      <table class="totals">
+        <tr>
+          <td class="label">Subtotal</td>
+          <td class="right">{{ opportunity.currency }} {{ "{:,.2f}".format(subtotal) }}</td>
+        </tr>
+        <tr>
+          <td class="label">Tax{% if tax_rate %} ({{ tax_rate }}%){% endif %}</td>
+          <td class="right">{{ opportunity.currency }} {{ "{:,.2f}".format(tax_amount) }}</td>
+        </tr>
+        <tr class="grand">
+          <td class="label">Grand Total</td>
+          <td class="right">{{ opportunity.currency }} {{ "{:,.2f}".format(grand_total) }}</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2>Terms &amp; Conditions</h2>
+      <div class="muted">{{ terms_text|nl2br }}</div>
+    </div>
+
+    <div class="footer muted">
+      <div>{{ footer_text }}</div>
+      {% if company.email or company.phone %}
+      <div>{{ company.email }}{% if company.email and company.phone %} | {% endif %}{{ company.phone }}</div>
+      {% endif %}
+    </div>
+  </body>
+</html>

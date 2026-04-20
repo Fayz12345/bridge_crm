@@ -8,7 +8,7 @@
     <p class="text-uppercase small fw-semibold text-body-secondary mb-1">Leads</p>
     <h1 class="h3 mb-0">{{ page_title }}</h1>
   </div>
-  <a class="btn btn-outline-secondary" href="{{ url_for('leads.list_view') }}">Back to Leads</a>
+  <a class="btn btn-outline-secondary" href="{{ url_for('leads.list_view') }}"><span class="material-symbols-outlined">arrow_back</span> Back to Leads</a>
 </div>
 
 <div class="crm-card">
@@ -83,7 +83,7 @@
       </div>
 
       <div class="d-flex gap-2 mt-4">
-        <button class="btn btn-primary" type="submit">{{ submit_label }}</button>
+        <button class="btn btn-primary" type="submit"><span class="material-symbols-outlined">save</span> {{ submit_label }}</button>
         <a class="btn btn-outline-secondary" href="{% if lead %}{{ url_for('leads.detail_view', lead_id=lead.id) }}{% else %}{{ url_for('leads.list_view') }}{% endif %}">Cancel</a>
       </div>
     </form>

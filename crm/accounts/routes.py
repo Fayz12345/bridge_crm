@@ -18,7 +18,12 @@ from bridge_crm.crm.custom_fields.queries import (
     list_custom_fields,
 )
 
-accounts_bp = Blueprint("accounts", __name__, url_prefix="/accounts")
+accounts_bp = Blueprint(
+    "accounts",
+    __name__,
+    url_prefix="/accounts",
+    template_folder="../../templates",
+)
 
 ACCOUNT_FIELDS = [
     "company_name",

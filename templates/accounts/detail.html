@@ -10,8 +10,8 @@
     <p class="text-body-secondary mb-0">{{ account.industry or "Industry not set" }}</p>
   </div>
   <div class="d-flex gap-2">
-    <a class="btn btn-outline-secondary" href="{{ url_for('accounts.list_view') }}">Back</a>
-    <a class="btn btn-primary" href="{{ url_for('accounts.edit_view', account_id=account.id) }}">Edit Account</a>
+    <a class="btn btn-outline-secondary" href="{{ url_for('accounts.list_view') }}"><span class="material-symbols-outlined">arrow_back</span> Back</a>
+    <a class="btn btn-primary" href="{{ url_for('accounts.edit_view', account_id=account.id) }}"><span class="material-symbols-outlined">edit</span> Edit Account</a>
   </div>
 </div>
 
@@ -19,7 +19,7 @@
   <div class="col-lg-8">
     <div class="crm-card h-100">
       <div class="card-body">
-        <h2 class="h5 mb-3">Company Profile</h2>
+        <h2 class="h5 mb-3 pb-2" style="border-bottom:2px solid var(--crm-teal)">Company Profile</h2>
         <div class="row g-3">
           <div class="col-md-6">
             <div class="crm-field-label">Primary Contact</div>
@@ -77,14 +77,14 @@
       <div class="card-body">
         <div class="d-flex justify-content-between align-items-center mb-3">
           <h2 class="h5 mb-0">Contacts</h2>
-          <a class="btn btn-sm btn-primary" href="{{ url_for('accounts.create_contact_view', account_id=account.id) }}">Add Contact</a>
+          <a class="btn btn-sm btn-primary" href="{{ url_for('accounts.create_contact_view', account_id=account.id) }}"><span class="material-symbols-outlined">add</span> Add Contact</a>
         </div>
         {% for contact in contacts %}
         <div class="border rounded-3 p-3 mb-2">
           <div class="d-flex justify-content-between align-items-start gap-2">
             <div>
               <div class="fw-semibold">
-                {{ contact.first_name }} {{ contact.last_name }}
+                <span class="material-symbols-outlined me-1" style="font-size:16px;color:var(--crm-teal);vertical-align:-2px">person</span>{{ contact.first_name }} {{ contact.last_name }}
                 {% if contact.is_primary %}
                 <span class="badge text-bg-secondary align-text-top">Primary</span>
                 {% endif %}

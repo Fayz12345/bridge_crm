@@ -3,10 +3,11 @@ Description=Bridge CRM gunicorn service
 After=network.target postgresql.service
 
 [Service]
-User=ubuntu
-Group=www-data
-WorkingDirectory=/home/ubuntu/inventory-chatbot
-EnvironmentFile=/home/ubuntu/inventory-chatbot/bridge_crm/.env
+User=crm-app
+Group=crm-shared
+WorkingDirectory=/opt/crm-runtime
+Environment=PYTHONPATH=/opt/crm-runtime
+EnvironmentFile=/home/ubuntu/bridge_crm/.env
 ExecStart=/home/ubuntu/crm-env/bin/gunicorn \
   --workers 3 \
   --bind 127.0.0.1:5001 \

@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import inspect, select, text
 from sqlalchemy.dialects.postgresql import insert
 
 from bridge_crm.db.engine import get_engine
@@ -49,12 +49,33 @@ def initialize_database() -> None:
     metadata.create_all(engine)
 
     with engine.begin() as connection:
+        _ensure_incremental_schema(connection)
         for stage in DEFAULT_PIPELINE_STAGES:
             statement = insert(crm_pipeline_stages).values(**stage)
             statement = statement.on_conflict_do_nothing(
                 index_elements=[crm_pipeline_stages.c.stage_key]
             )
             connection.execute(statement)
+
+
+def _ensure_incremental_schema(connection) -> None:
+    inspector = inspect(connection)
+    email_columns = {column["name"] for column in inspector.get_columns("crm_emails")}
+    if "attachments_json" not in email_columns:
+        if connection.dialect.name == "postgresql":
+            connection.execute(
+                text(
+                    "ALTER TABLE crm_emails "
+                    "ADD COLUMN attachments_json JSONB DEFAULT '[]'::jsonb"
+                )
+            )
+        else:
+            connection.execute(
+                text(
+                    "ALTER TABLE crm_emails "
+                    "ADD COLUMN attachments_json JSON DEFAULT '[]'"
+                )
+            )
 
 
 def get_pipeline_stages() -> list[dict]:

@@ -30,7 +30,7 @@ The business has an ERP system (`gadgetkg_bwqa_main` on MySQL 5.7) that manages 
 | Frontend | **Bootstrap 5 + htmx** | No build step, no npm. CDN links only. Interactive without a SPA |
 | Charts | **Chart.js** (CDN) | Simple reporting charts |
 | Drag-and-drop | **SortableJS** (CDN) | Pipeline kanban board |
-| Email | **smtplib via Outlook 365 SMTP** | Org already uses Outlook 365 — use `smtp.office365.com:587` with existing credentials |
+| Email | **Microsoft Graph OAuth** with SMTP fallback | MFA is enabled in the org, so production mail should use Graph app credentials instead of mailbox passwords |
 | WhatsApp | **WhatsApp Business Cloud API** (direct, no Twilio) | No markup, direct Meta integration |
 | Mobile | **PWA** | Zero additional codebase — installable via "Add to Home Screen" |
 | ERP Sync | **cron + pymysql** | Same pattern as existing ecommerce pipeline |
@@ -113,13 +113,12 @@ The CRM is no longer just planned; a working implementation exists and is deploy
 
 - ERP sync command scaffold exists, but real ERP connectivity is not configured
 - WhatsApp integration scaffold exists, but no Meta credentials/webhooks are configured
-- SMTP send code exists, but Outlook credentials are still blank in production
+- Sandbox email is still unconfigured; SMTP remains available only as a fallback provider in code
 
 **Still pending**
 
 - Real ERP product sync
 - Real product data in `crm_products`
-- Live SMTP credentials and email delivery verification
 - WhatsApp send/receive integration
 - Power BI read-only user/views and connection documentation
 - Production cleanup to move from `/crm` on port `5000` to a cleaner subdomain/SSL deployment
@@ -154,7 +153,7 @@ bridge_crm/
     emails/     queries.py                   # email log persistence
   integrations/
     erp_sync.py                   # cron: sync ERP products -> crm_products
-    email_sender.py               # smtplib wrapper: compose + send + log
+    email_sender.py               # Microsoft Graph OAuth mailer with SMTP fallback
     whatsapp.py                   # WhatsApp Cloud API: send + receive webhook
   api/
     lead_capture.py               # /api/leads — public POST endpoint for iFrame form
@@ -344,7 +343,7 @@ Target table uses `INSERT ... ON CONFLICT (erp_inventory_id) DO UPDATE SET ...` 
 **Status:** Mostly complete and deployed. Remaining items are production hardening and cleanup, not core feature build.
 
 1. **Scaffold project** — `bridge-crm/` directory, git init, `.gitignore`, `requirements.txt` (`flask`, `flask-wtf`, `gunicorn`, `python-dotenv`, `psycopg2-binary`, `pymysql`, `sqlalchemy`, `alembic`, `werkzeug`), virtualenv. Copy `CRM_Implementation_Plan.md` into the project root for reference
-2. **Config** — `config.py` using `os.environ[]` + `python-dotenv` (same pattern as `inventory-chatbot/config.py`). Keys: `CRM_DB_HOST` (localhost), `CRM_DB_PORT`, `CRM_DB_NAME`, `CRM_DB_USER`, `CRM_DB_PASSWORD`, `SECRET_KEY` (32+ bytes), `ERP_DB_HOST` (remote ERP EC2 IP), `ERP_DB_PORT`, `ERP_DB_NAME`, `ERP_DB_USER`, `ERP_DB_PASSWORD`, `SMTP_*`, `CORS_ALLOWED_ORIGINS`
+2. **Config** — `config.py` using `os.environ[]` + `python-dotenv` (same pattern as `inventory-chatbot/config.py`). Keys: `CRM_DB_HOST` (localhost), `CRM_DB_PORT`, `CRM_DB_NAME`, `CRM_DB_USER`, `CRM_DB_PASSWORD`, `SECRET_KEY` (32+ bytes), `ERP_DB_HOST` (remote ERP EC2 IP), `ERP_DB_PORT`, `ERP_DB_NAME`, `ERP_DB_USER`, `ERP_DB_PASSWORD`, `EMAIL_PROVIDER`, `M365_*`, `SMTP_*`, `CORS_ALLOWED_ORIGINS`
 3. **PostgreSQL setup** — Install PostgreSQL (`brew install postgresql@16` locally, `apt install postgresql` on EC2). Create `bridge_crm` database. Bind to localhost only. Create `db/engine.py` (SQLAlchemy engine from config), `db/schema.py` (table definitions with UNIQUE constraint on `crm_accounts.erp_client_id`), `db/migrate.py` (create_all for now, Alembic later). Set up daily `pg_dump` backup cron
 4. **ERP network access** — On the remote ERP EC2, open port 3306 in the security group for the CRM EC2's IP. Create a read-only MySQL user on the ERP for CRM sync: `CREATE USER 'crm_reader'@'<CRM_EC2_IP>' IDENTIFIED BY '...'; GRANT SELECT ON gadgetkg_bwqa_main.* TO 'crm_reader'@'<CRM_EC2_IP>';`. Test connectivity from CRM EC2: `mysql -h <ERP_EC2_IP> -u crm_reader -p gadgetkg_bwqa_main -e "SELECT COUNT(*) FROM wh_inv_master"`
 5. **Auth + security** — `crm/auth/routes.py`: login page, logout, `login_required` decorator using `session['user_id']`. Seed admin user via script. Same werkzeug password hashing pattern as chatbot. Add `CSRFProtect(app)` via Flask-WTF. Configure secure session cookies (HttpOnly, Secure, SameSite=Lax). Add login rate limiting (5 failures = 15 min lockout). Add ProxyFix middleware. Add `/health` endpoint
@@ -386,7 +385,7 @@ Target table uses `INSERT ... ON CONFLICT (erp_inventory_id) DO UPDATE SET ...` 
 - Current pipeline board uses explicit stage-move forms; drag-and-drop SortableJS behavior is not implemented yet
 - Opportunity list filters are basic; owner/date-range filters are not built yet
 - Opportunity detail has Products, Activity, and Email functionality, but WhatsApp is not yet live
-- Mention notifications are currently an inbox + optional SMTP email hook, not a richer notification center
+- Mention notifications are currently an inbox + optional email hook, not a richer notification center
 
 ### Phase 4: ERP Product Sync (Weeks 7-8)
 **Deliverable: Products synced from ERP, browsable, attachable to deals**
@@ -416,9 +415,9 @@ Target table uses `INSERT ... ON CONFLICT (erp_inventory_id) DO UPDATE SET ...` 
 ### Phase 5: Email Integration (Weeks 9-10)
 **Deliverable: Send emails from any entity, tracked in activity timeline**
 
-**Status:** Partially complete.
+**Status:** Implemented and verified in production for Microsoft Graph OAuth.
 
-1. **Email infrastructure** — `integrations/email_sender.py`: `send_email(to, subject, body_html, body_text, cc)` using smtplib + `email.mime`. Use Outlook 365 SMTP: `SMTP_HOST=smtp.office365.com`, `SMTP_PORT=587`, `SMTP_USER=your-outlook-email`, `SMTP_PASSWORD=app-password` (generate an App Password in Microsoft 365 admin if MFA is enabled). STARTTLS required. `SMTP_FROM_ADDRESS` must match the authenticated Outlook user
+1. **Email infrastructure** — `integrations/email_sender.py`: `send_email(to, subject, body_text, cc, attachments)` now supports `EMAIL_PROVIDER=graph` using Microsoft Graph app credentials (`M365_TENANT_ID`, `M365_CLIENT_ID`, `M365_CLIENT_SECRET`, `M365_SENDER`). SMTP remains available as a fallback provider for non-production environments
 2. **Compose UI** — `templates/components/email_compose.html`: Bootstrap modal with To (pre-filled), CC, Subject, Body (textarea or TinyMCE via CDN). Include on Lead, Opportunity, Account detail pages
 3. **Send route** — `POST /api/email/send`: validate, send, insert into `crm_emails`, log activity
 4. **Email history** — "Emails" tab on each entity detail page. Query `crm_emails WHERE related_type = ? AND related_id = ?`. Timeline display with subject, date, status badge. Click to expand body
@@ -426,16 +425,155 @@ Target table uses `INSERT ... ON CONFLICT (erp_inventory_id) DO UPDATE SET ...` 
 
 **Implemented from Phase 5**
 
-- SMTP wrapper exists in `bridge_crm/integrations/email_sender.py`
+- Microsoft Graph OAuth sender is implemented in `bridge_crm/integrations/email_sender.py`
+- SMTP fallback remains available in the same module
 - Opportunity detail includes outbound email compose + email history
 - `crm_emails` persistence and activity logging are implemented
-- Mention notifications can optionally send email as well once SMTP credentials are configured
+- Mention notifications can optionally send email as well
+- Production mail is configured and verified from `crm@bridge-wireless.com`
 
 **Remaining from Phase 5**
 
-- SMTP credentials are not populated on EC2 yet, so sends will fail until configured
 - Email UI is currently on Opportunities only; not yet added to Leads and Accounts
 - Email templates are not implemented
+- Exchange mailbox scoping for least-privilege send rights is not documented in the deployment steps yet; current production setup relies on Graph `Mail.Send` application permission
+
+### Phase 5B: Quote & Invoice PDF Generation + Email Attachment (NEW)
+**Deliverable: Generate branded PDF documents from Opportunities and attach them to outbound emails**
+
+**Status:** Implemented and deployed.
+
+#### Overview
+
+Sales reps need to generate professional Quote PDFs from any Opportunity and Sales Invoice PDFs when an Opportunity reaches `closed_won`. These PDFs are automatically attached to the Outbound Email compose form on the Opportunity detail page, with the option to remove the attachment before sending.
+
+#### Requirements
+
+**1. Quote PDF generation (all stages)**
+- A "Generate Quote" button on the Opportunity detail page, available at **any** pipeline stage
+- The PDF contains:
+  - **Header:** Bridge Wireless company logo, name, address, phone, email
+  - **Quote metadata:** Quote number (format: `Q-{opportunity_id}-{timestamp}`), date generated, valid-until date (configurable, default 30 days), opportunity title
+  - **Customer info:** Account company name, primary contact name, contact email, phone, address (pulled from `crm_accounts` + `crm_contacts`)
+  - **Line items table:** Brand, Model, Grade, Storage, Quantity, Unit Price, Line Total — pulled from `crm_opportunity_lines`
+  - **Totals:** Subtotal, optional tax line (configurable tax rate in settings or per-opportunity), Grand Total
+  - **Currency:** Respect the opportunity's `currency` field (default CAD)
+  - **Terms & conditions:** Configurable block of text (stored in app config or a future settings table)
+  - **Footer:** "Thank you for your business" message, Bridge Wireless contact details
+- Clicking "Generate Quote" creates the PDF server-side and stores it temporarily (or in a `crm_documents` table for persistence)
+- The generated Quote PDF is **automatically attached** to the Outbound Email compose form below
+
+**2. Sales Invoice PDF generation (closed_won only)**
+- A "Generate Invoice" button on the Opportunity detail page, visible **only** when `opportunity.stage == 'closed_won'`
+- The Invoice PDF contains the same structure as the Quote but with:
+  - **Header labeled "SALES INVOICE"** instead of "QUOTE"
+  - **Invoice number:** format `INV-{opportunity_id}-{timestamp}`
+  - **Invoice date:** Date generated
+  - **Payment terms:** Configurable text (e.g., "Net 30", stored in config)
+  - **Due date:** Invoice date + payment terms days
+  - **Close date:** From `opportunity.close_date`
+- Clicking "Generate Invoice" creates the PDF and **automatically attaches** it to the Outbound Email compose form
+
+**3. Email attachment integration**
+- When a Quote or Invoice PDF is generated, the Outbound Email compose form on the same page is updated to show the attached file:
+  - Display the filename (e.g., `Q-42-20260418.pdf`) with a file icon and file size
+  - Include a "Remove" button/link next to the attachment that removes it from the pending email (does not delete the stored PDF)
+  - The attachment filename and path are passed to the email form via a hidden input
+- When the email is sent via `POST /opportunities/<id>/send-email`, the attachment is included as a MIME attachment in the outbound email
+- The `send_email()` function in `integrations/email_sender.py` must be extended to accept an optional `attachments` parameter (list of `{filename, filepath}` dicts)
+- The `crm_emails` table should store attachment metadata (filename, size) in a new `attachments_json JSONB` column or a separate `crm_email_attachments` table
+
+**4. PDF storage**
+- Generated PDFs are stored on disk at `static/documents/` or a configurable path outside the static folder (e.g., `data/documents/`)
+- A new `crm_documents` table tracks generated documents:
+  ```
+  id SERIAL PK, opportunity_id FK->crm_opportunities,
+  document_type ('quote'|'invoice'),
+  document_number VARCHAR(50) UNIQUE,
+  file_path TEXT, file_size_bytes INT,
+  generated_by FK->crm_users, created_at TIMESTAMPTZ
+  ```
+- Documents are **not** publicly accessible — serve them through an authenticated route: `GET /opportunities/<id>/documents/<doc_id>/download`
+- Old documents are kept for audit trail — generating a new Quote/Invoice does not delete prior versions
+
+#### Technical Implementation
+
+**PDF library:** `weasyprint` or `reportlab`
+- **Recommended: `weasyprint`** — renders HTML/CSS to PDF, which means the Quote/Invoice template is a Jinja2 HTML template with CSS styling (matching the Bridge Wireless brand). Easier to maintain and style than `reportlab`'s programmatic API
+- Add `weasyprint` to `requirements.txt`
+- WeasyPrint requires system dependencies: `libpango`, `libcairo`, `libgdk-pixbuf` (already common on Ubuntu; install via `apt install libpango-1.0-0 libpangocairo-1.0-0 libgdk-pixbuf2.0-0` on EC2)
+
+**New files:**
+- `integrations/pdf_generator.py` — `generate_quote_pdf(opportunity_id)` and `generate_invoice_pdf(opportunity_id)` functions. Each renders a Jinja2 template to HTML, converts to PDF via WeasyPrint, saves to disk, inserts into `crm_documents`, returns the file path
+- `templates/documents/quote.html` — HTML template for Quote PDF (Bridge Wireless branding, teal/navy color scheme, logo, table of line items, totals)
+- `templates/documents/invoice.html` — HTML template for Invoice PDF (same layout, labeled as Invoice, with payment terms and due date)
+- `crm/opportunities/routes.py` — New routes:
+  - `POST /opportunities/<id>/generate-quote` — generates Quote PDF, redirects back to detail page with attachment pre-loaded
+  - `POST /opportunities/<id>/generate-invoice` — generates Invoice PDF (only if stage is `closed_won`), redirects back with attachment
+  - `GET /opportunities/<id>/documents/<doc_id>/download` — authenticated file download
+- `db/tables.py` — Add `crm_documents` table definition
+
+**Route flow:**
+1. User clicks "Generate Quote" → `POST /opportunities/<id>/generate-quote`
+2. Server generates PDF, stores in `crm_documents`, redirects to `GET /opportunities/<id>?attachment=<doc_id>`
+3. Opportunity detail page checks for `attachment` query param, pre-fills the email compose form with the attachment displayed
+4. User can remove the attachment (clears the hidden input) or compose the email and send
+5. `POST /opportunities/<id>/send-email` reads the attachment param, includes the PDF as a MIME attachment, sends, logs in `crm_emails` with attachment metadata
+
+**Outbound Email compose form changes (`templates/opportunities/detail.html`):**
+- Add "Generate Quote" button above the email form (always visible)
+- Add "Generate Invoice" button (visible only when `stage == 'closed_won'`)
+- Add an attachment display area between the compose fields and the Send button:
+  ```html
+  {% if attachment %}
+  <div class="d-flex align-items-center gap-2 p-2 rounded bg-body-tertiary mt-2">
+    <span class="material-symbols-outlined" style="color:var(--crm-teal)">attach_file</span>
+    <span class="small fw-semibold">{{ attachment.filename }}</span>
+    <span class="small text-body-secondary">({{ attachment.size_display }})</span>
+    <a href="#" class="ms-auto small text-danger" onclick="document.getElementById('attachment_id').value=''; this.closest('.d-flex').remove(); return false;">Remove</a>
+  </div>
+  <input type="hidden" id="attachment_id" name="attachment_id" value="{{ attachment.id }}">
+  {% endif %}
+  ```
+
+**Email sender changes (`integrations/email_sender.py`):**
+- Extend `send_email()` signature: `send_email(to_address, subject, body_text, cc_address=None, attachments=None)`
+- `attachments` is a list of dicts: `[{"filename": "Q-42-20260418.pdf", "filepath": "/path/to/file.pdf"}]`
+- When attachments are present, switch from `EmailMessage.set_content()` to multipart MIME: create a `MIMEMultipart`, attach the text body as `MIMEText`, attach each file as `MIMEApplication` with `Content-Disposition: attachment; filename="..."` headers
+
+#### Database Migration
+
+Add `crm_documents` table:
+```sql
+CREATE TABLE crm_documents (
+  id SERIAL PRIMARY KEY,
+  opportunity_id INTEGER NOT NULL REFERENCES crm_opportunities(id) ON DELETE CASCADE,
+  document_type VARCHAR(20) NOT NULL CHECK (document_type IN ('quote', 'invoice')),
+  document_number VARCHAR(50) NOT NULL UNIQUE,
+  file_path TEXT NOT NULL,
+  file_size_bytes INTEGER,
+  generated_by INTEGER REFERENCES crm_users(id),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX idx_crm_documents_opportunity ON crm_documents(opportunity_id);
+```
+
+Optionally add `attachments_json JSONB` column to `crm_emails`:
+```sql
+ALTER TABLE crm_emails ADD COLUMN attachments_json JSONB DEFAULT '[]';
+```
+
+#### Verification
+
+- Create an Opportunity with quote lines → click "Generate Quote" → verify PDF downloads with correct branding, line items, and totals
+- Verify the generated Quote appears as an attachment in the Outbound Email compose form
+- Click "Remove" on the attachment → verify it disappears from the form
+- Send an email with the Quote attached → verify the email arrives with the PDF attachment
+- Move the Opportunity to `closed_won` → verify "Generate Invoice" button appears
+- Generate an Invoice → verify PDF has "SALES INVOICE" header, invoice number, payment terms, due date
+- Send the Invoice via email → verify attachment arrives
+- Verify the document download route requires authentication
+- Verify prior documents are preserved (generate multiple quotes — all should be accessible)
 
 ### Phase 6: WhatsApp Integration (Weeks 11-13)
 **Deliverable: Send/receive WhatsApp messages from CRM entities**

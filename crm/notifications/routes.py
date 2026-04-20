@@ -7,7 +7,12 @@ from bridge_crm.crm.notifications.queries import (
     mark_notification_read,
 )
 
-notifications_bp = Blueprint("notifications", __name__, url_prefix="/notifications")
+notifications_bp = Blueprint(
+    "notifications",
+    __name__,
+    url_prefix="/notifications",
+    template_folder="../../templates",
+)
 
 
 @notifications_bp.route("/")

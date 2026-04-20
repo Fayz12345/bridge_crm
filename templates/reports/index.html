@@ -3,58 +3,311 @@
 {% block title %}Reports | {{ config.APP_NAME }}{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
   <div>
     <p class="text-uppercase small fw-semibold text-body-secondary mb-1">Reports</p>
-    <h1 class="h3 mb-0">Pipeline and lead analytics</h1>
+    <h1 class="h3 mb-0">Sales Reports</h1>
   </div>
-  <a class="btn btn-outline-primary" href="{{ url_for('reports.pipeline_csv') }}">Export Pipeline CSV</a>
+  <div class="d-flex flex-wrap gap-2">
+    <a class="btn btn-outline-primary btn-sm" href="{{ url_for('reports.opportunities_csv') }}"><span class="material-symbols-outlined" style="font-size:18px">download</span> Opportunities</a>
+    <a class="btn btn-outline-primary btn-sm" href="{{ url_for('reports.leads_csv') }}"><span class="material-symbols-outlined" style="font-size:18px">download</span> Leads</a>
+    <a class="btn btn-outline-primary btn-sm" href="{{ url_for('reports.products_csv') }}"><span class="material-symbols-outlined" style="font-size:18px">download</span> Products</a>
+    <a class="btn btn-outline-primary btn-sm" href="{{ url_for('reports.pipeline_csv') }}"><span class="material-symbols-outlined" style="font-size:18px">download</span> Pipeline</a>
+  </div>
 </div>
 
-<div class="row g-3">
-  <div class="col-lg-4">
-    <div class="crm-card h-100">
-      <div class="card-body">
-        <h2 class="h5 mb-3">Pipeline Breakdown</h2>
-        {% for row in pipeline %}
-        <div class="d-flex justify-content-between border-bottom py-2">
-          <div>{{ row.stage.replace('_', ' ')|title }}</div>
-          <div>{{ row.count }} · ${{ "{:,.0f}".format(row.amount) }}</div>
+{# ------------------------------------------------------------------ #}
+{# 1. Opportunity Summary                                             #}
+{# ------------------------------------------------------------------ #}
+<div class="crm-card mb-3">
+  <div class="card-body">
+    <h2 class="h5 mb-3 pb-2" style="border-bottom:2px solid var(--crm-teal)">Opportunity Summary</h2>
+    <div class="row g-3 mb-3">
+      <div class="col-6 col-md-3">
+        <div class="p-3 rounded-3 bg-body-tertiary text-center">
+          <div class="small text-body-secondary text-uppercase fw-semibold">Total</div>
+          <div class="h4 mb-0" style="color:var(--crm-teal)">{{ opp_totals.total }}</div>
         </div>
-        {% else %}
-        <p class="text-body-secondary mb-0">No opportunity data yet.</p>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="p-3 rounded-3 bg-body-tertiary text-center">
+          <div class="small text-body-secondary text-uppercase fw-semibold">Open</div>
+          <div class="h4 mb-0" style="color:var(--crm-teal)">{{ opp_totals.open_count }}</div>
+          <div class="small text-body-secondary">${{ "{:,.0f}".format(opp_totals.open_value) }}</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="p-3 rounded-3 bg-body-tertiary text-center">
+          <div class="small text-body-secondary text-uppercase fw-semibold">Won</div>
+          <div class="h4 mb-0 text-success">{{ opp_totals.won_count }}</div>
+          <div class="small text-body-secondary">${{ "{:,.0f}".format(opp_totals.won_value) }}</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="p-3 rounded-3 bg-body-tertiary text-center">
+          <div class="small text-body-secondary text-uppercase fw-semibold">Lost</div>
+          <div class="h4 mb-0 text-danger">{{ opp_totals.lost_count }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-striped align-middle mb-0">
+        <thead>
+          <tr>
+            <th>Opportunity</th>
+            <th>Account</th>
+            <th>Owner</th>
+            <th>Stage</th>
+            <th class="text-end">Amount</th>
+            <th class="text-end">Prob.</th>
+            <th>Expected Close</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in opp_rows %}
+          <tr>
+            <td><a href="{{ url_for('opportunities.detail_view', opportunity_id=row.id) }}">{{ row.title }}</a></td>
+            <td>{{ row.account_name }}</td>
+            <td>{{ row.owner_name or "—" }}</td>
+            <td><span class="badge text-bg-light text-uppercase">{{ row.stage.replace('_', ' ') }}</span></td>
+            <td class="text-end">{% if row.amount %}${{ "{:,.2f}".format(row.amount) }}{% else %}—{% endif %}</td>
+            <td class="text-end">{{ row.probability }}%</td>
+            <td>{{ row.expected_close_date.strftime("%Y-%m-%d") if row.expected_close_date else "—" }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="7" class="text-body-secondary text-center py-4">No opportunity data yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+{# ------------------------------------------------------------------ #}
+{# 2. Lead Summary                                                    #}
+{# ------------------------------------------------------------------ #}
+<div class="crm-card mb-3">
+  <div class="card-body">
+    <h2 class="h5 mb-3 pb-2" style="border-bottom:2px solid var(--crm-teal)">Lead Summary</h2>
+    <div class="row g-3 mb-3">
+      <div class="col-6 col-md-2">
+        <div class="p-3 rounded-3 bg-body-tertiary text-center">
+          <div class="small text-body-secondary text-uppercase fw-semibold">Total</div>
+          <div class="h4 mb-0" style="color:var(--crm-teal)">{{ lead_totals.total }}</div>
+        </div>
+      </div>
+      {% for status in ['new', 'contacted', 'qualified', 'unqualified', 'converted'] %}
+      <div class="col-6 col-md-2">
+        <div class="p-3 rounded-3 bg-body-tertiary text-center">
+          <div class="small text-body-secondary text-uppercase fw-semibold">{{ status }}</div>
+          <div class="h4 mb-0" style="color:var(--crm-teal)">{{ lead_totals[status] }}</div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="row g-3 mb-3">
+      <div class="col-lg-4">
+        <h3 class="h6 mb-2">By Source</h3>
+        {% for src in lead_sources %}
+        <div class="d-flex justify-content-between border-bottom py-1">
+          <div class="small">{{ src.source.replace('_', ' ')|title }}</div>
+          <div class="small fw-semibold">{{ src.count }}</div>
+        </div>
         {% endfor %}
       </div>
     </div>
+    <div class="table-responsive">
+      <table class="table table-striped align-middle mb-0">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Company</th>
+            <th>Source</th>
+            <th>Status</th>
+            <th>Owner</th>
+            <th>Created</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in lead_rows %}
+          <tr>
+            <td><a href="{{ url_for('leads.detail_view', lead_id=row.id) }}">{{ row.first_name }} {{ row.last_name }}</a></td>
+            <td>{{ row.company_name or "—" }}</td>
+            <td>{{ row.source.replace('_', ' ')|title }}</td>
+            <td><span class="badge text-bg-light text-uppercase">{{ row.status.replace('_', ' ') }}</span></td>
+            <td>{{ row.owner_name or "—" }}</td>
+            <td>{{ row.created_at.strftime("%Y-%m-%d") if row.created_at else "—" }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="6" class="text-body-secondary text-center py-4">No lead data yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
   </div>
-  <div class="col-lg-4">
-    <div class="crm-card h-100">
-      <div class="card-body">
-        <h2 class="h5 mb-3">Lead Sources</h2>
-        {% for row in lead_sources %}
-        <div class="d-flex justify-content-between border-bottom py-2">
-          <div>{{ row.source.replace('_', ' ')|title }}</div>
-          <div>{{ row.count }}</div>
+</div>
+
+{# ------------------------------------------------------------------ #}
+{# 3. Sales Forecast                                                  #}
+{# ------------------------------------------------------------------ #}
+<div class="crm-card mb-3">
+  <div class="card-body">
+    <h2 class="h5 mb-3 pb-2" style="border-bottom:2px solid var(--crm-teal)">Sales Forecast</h2>
+    <div class="row g-3 mb-3">
+      <div class="col-6 col-md-4">
+        <div class="p-3 rounded-3 bg-body-tertiary text-center">
+          <div class="small text-body-secondary text-uppercase fw-semibold">Open Deals</div>
+          <div class="h4 mb-0" style="color:var(--crm-teal)">{{ forecast_totals.deal_count }}</div>
         </div>
-        {% else %}
-        <p class="text-body-secondary mb-0">No lead source data yet.</p>
-        {% endfor %}
+      </div>
+      <div class="col-6 col-md-4">
+        <div class="p-3 rounded-3 bg-body-tertiary text-center">
+          <div class="small text-body-secondary text-uppercase fw-semibold">Total Pipeline</div>
+          <div class="h4 mb-0" style="color:var(--crm-teal)">${{ "{:,.0f}".format(forecast_totals.total_amount) }}</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-4">
+        <div class="p-3 rounded-3 bg-body-tertiary text-center">
+          <div class="small text-body-secondary text-uppercase fw-semibold">Weighted Forecast</div>
+          <div class="h4 mb-0" style="color:var(--crm-teal)">${{ "{:,.0f}".format(forecast_totals.weighted_amount) }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-striped align-middle mb-0">
+        <thead>
+          <tr>
+            <th>Month</th>
+            <th class="text-end">Deals</th>
+            <th class="text-end">Total Amount</th>
+            <th class="text-end">Avg Probability</th>
+            <th class="text-end">Weighted Forecast</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in forecast_rows %}
+          <tr>
+            <td>{{ row.forecast_month }}</td>
+            <td class="text-end">{{ row.deal_count }}</td>
+            <td class="text-end">${{ "{:,.0f}".format(row.total_amount) }}</td>
+            <td class="text-end">{{ row.avg_probability|int }}%</td>
+            <td class="text-end fw-semibold">${{ "{:,.0f}".format(row.weighted_amount) }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="5" class="text-body-secondary text-center py-4">No forecast data yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+{# ------------------------------------------------------------------ #}
+{# 4. Accounts by Value                                               #}
+{# ------------------------------------------------------------------ #}
+<div class="crm-card mb-3">
+  <div class="card-body">
+    <h2 class="h5 mb-3 pb-2" style="border-bottom:2px solid var(--crm-teal)">Accounts by Value</h2>
+    <div class="row g-3">
+      <div class="col-lg-6">
+        <h3 class="h6 mb-2">Closed Won</h3>
+        <div class="table-responsive">
+          <table class="table table-striped align-middle mb-0">
+            <thead>
+              <tr>
+                <th>Account</th>
+                <th class="text-end">Deals</th>
+                <th class="text-end">Total Value</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in accounts_won %}
+              <tr>
+                <td><a href="{{ url_for('accounts.detail_view', account_id=row.id) }}">{{ row.company_name }}</a></td>
+                <td class="text-end">{{ row.deal_count }}</td>
+                <td class="text-end fw-semibold">${{ "{:,.0f}".format(row.total_value) }}</td>
+              </tr>
+              {% else %}
+              <tr><td colspan="3" class="text-body-secondary text-center py-4">No closed-won accounts yet.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="col-lg-6">
+        <h3 class="h6 mb-2">Open Opportunities</h3>
+        <div class="table-responsive">
+          <table class="table table-striped align-middle mb-0">
+            <thead>
+              <tr>
+                <th>Account</th>
+                <th class="text-end">Deals</th>
+                <th class="text-end">Total Value</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in accounts_open %}
+              <tr>
+                <td><a href="{{ url_for('accounts.detail_view', account_id=row.id) }}">{{ row.company_name }}</a></td>
+                <td class="text-end">{{ row.deal_count }}</td>
+                <td class="text-end fw-semibold">${{ "{:,.0f}".format(row.total_value) }}</td>
+              </tr>
+              {% else %}
+              <tr><td colspan="3" class="text-body-secondary text-center py-4">No open accounts yet.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   </div>
-  <div class="col-lg-4">
-    <div class="crm-card h-100">
-      <div class="card-body">
-        <h2 class="h5 mb-3">Sales Forecast</h2>
-        {% for row in forecast %}
-        <div class="d-flex justify-content-between border-bottom py-2">
-          <div>{{ row.forecast_month }}</div>
-          <div>${{ "{:,.0f}".format(row.weighted_amount) }}</div>
+</div>
+
+{# ------------------------------------------------------------------ #}
+{# 5. Products Sold                                                   #}
+{# ------------------------------------------------------------------ #}
+<div class="crm-card mb-3">
+  <div class="card-body">
+    <h2 class="h5 mb-3 pb-2" style="border-bottom:2px solid var(--crm-teal)">Products Sold</h2>
+    <div class="row g-3 mb-3">
+      <div class="col-6 col-md-4">
+        <div class="p-3 rounded-3 bg-body-tertiary text-center">
+          <div class="small text-body-secondary text-uppercase fw-semibold">Total Units</div>
+          <div class="h4 mb-0" style="color:var(--crm-teal)">{{ "{:,}".format(product_totals.total_quantity) }}</div>
         </div>
-        {% else %}
-        <p class="text-body-secondary mb-0">No forecast data yet.</p>
-        {% endfor %}
       </div>
+      <div class="col-6 col-md-4">
+        <div class="p-3 rounded-3 bg-body-tertiary text-center">
+          <div class="small text-body-secondary text-uppercase fw-semibold">Total Revenue</div>
+          <div class="h4 mb-0" style="color:var(--crm-teal)">${{ "{:,.0f}".format(product_totals.total_value) }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-striped align-middle mb-0">
+        <thead>
+          <tr>
+            <th>Product</th>
+            <th>Grade</th>
+            <th>Storage</th>
+            <th class="text-end">Qty Sold</th>
+            <th class="text-end">Total Value</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in product_rows %}
+          <tr>
+            <td class="fw-semibold">{{ row.brand }} {{ row.model }}</td>
+            <td>{{ row.grade or "—" }}</td>
+            <td>{{ row.storage or "—" }}</td>
+            <td class="text-end">{{ row.total_quantity }}</td>
+            <td class="text-end fw-semibold">${{ "{:,.2f}".format(row.total_value) }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="5" class="text-body-secondary text-center py-4">No closed-won product data yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
   </div>
 </div>

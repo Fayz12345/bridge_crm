@@ -11,7 +11,7 @@
   </div>
   <div class="d-flex gap-2">
     <a class="btn btn-outline-secondary" href="{{ url_for('setup.index') }}">Back to Setup</a>
-    <a class="btn btn-primary" href="{{ url_for('custom_fields.create_view') }}">New Field</a>
+    <a class="btn btn-primary" href="{{ url_for('custom_fields.create_view') }}"><span class="material-symbols-outlined">add</span> New Field</a>
   </div>
 </div>
 
@@ -52,7 +52,10 @@
         </tr>
         {% else %}
         <tr>
-          <td colspan="6" class="text-center py-5 text-body-secondary">No custom fields defined.</td>
+          <td colspan="6" class="crm-empty-state">
+            <span class="material-symbols-outlined">tune</span>
+            No custom fields defined.
+          </td>
         </tr>
         {% endfor %}
       </tbody>

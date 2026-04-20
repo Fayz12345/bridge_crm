@@ -61,9 +61,18 @@ def get_opportunity(opportunity_id: int) -> dict | None:
             owner.c.full_name.label("owner_name"),
             account.c.email.label("account_email"),
             account.c.phone.label("account_phone"),
+            account.c.phone_prefix.label("account_phone_prefix"),
+            account.c.address_line_1.label("account_address_line_1"),
+            account.c.address_line_2.label("account_address_line_2"),
+            account.c.city.label("account_city"),
+            account.c.state_province.label("account_state_province"),
+            account.c.postal_code.label("account_postal_code"),
+            account.c.country.label("account_country"),
             contact.c.first_name.label("contact_first_name"),
             contact.c.last_name.label("contact_last_name"),
             contact.c.email.label("contact_email"),
+            contact.c.phone.label("contact_phone"),
+            contact.c.phone_prefix.label("contact_phone_prefix"),
         )
         .select_from(
             crm_opportunities.join(account, crm_opportunities.c.account_id == account.c.id)

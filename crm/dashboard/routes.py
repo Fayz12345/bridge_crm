@@ -1,43 +1,52 @@
-from decimal import Decimal
-
-from flask import Blueprint, render_template
-from sqlalchemy import func, select
+from flask import Blueprint, g, render_template
 
 from bridge_crm.crm.auth.routes import login_required
+from bridge_crm.crm.dashboard.queries import (
+    all_recent_opportunities,
+    my_leads,
+    my_lead_count,
+    my_opportunities,
+    my_pipeline_value,
+    recently_closed_opportunities,
+    top_accounts_by_value,
+    top_selling_products,
+    total_open_opportunities,
+)
 from bridge_crm.crm.leads.queries import lead_status_counts
-from bridge_crm.crm.opportunities.queries import list_opportunities
-from bridge_crm.db.engine import get_connection
-from bridge_crm.db.schema import crm_accounts, crm_leads, crm_opportunities
 
-dashboard_bp = Blueprint("dashboard", __name__, url_prefix="/dashboard")
+dashboard_bp = Blueprint(
+    "dashboard",
+    __name__,
+    url_prefix="/dashboard",
+    template_folder="../../templates",
+)
 
 
 @dashboard_bp.route("/")
 @login_required
 def index():
-    with get_connection() as connection:
-        account_count = connection.execute(
-            select(func.count()).select_from(crm_accounts)
-        ).scalar_one()
-        lead_count = connection.execute(
-            select(func.count()).select_from(crm_leads)
-        ).scalar_one()
-        opportunity_count = connection.execute(
-            select(func.count()).select_from(crm_opportunities)
-        ).scalar_one()
-        pipeline_value = connection.execute(
-            select(func.coalesce(func.sum(crm_opportunities.c.amount), 0))
-        ).scalar_one()
+    role = g.user["role"]
+    user_id = g.user["id"]
 
-    opportunities = list_opportunities()[:5]
+    if role == "rep":
+        pipeline = my_pipeline_value(user_id)
+        return render_template(
+            "dashboard/index.html",
+            role=role,
+            my_opportunities=my_opportunities(user_id),
+            my_pipeline=pipeline,
+            my_leads=my_leads(user_id),
+            my_lead_count=my_lead_count(user_id),
+        )
+
+    open_opps = total_open_opportunities()
     return render_template(
         "dashboard/index.html",
-        metrics={
-            "accounts": int(account_count),
-            "leads": int(lead_count),
-            "opportunities": int(opportunity_count),
-            "pipeline_value": Decimal(pipeline_value or 0),
-        },
+        role=role,
+        top_accounts=top_accounts_by_value(),
+        recent_opportunities=all_recent_opportunities(),
+        top_products=top_selling_products(),
+        open_opportunities=open_opps,
+        closed_opportunities=recently_closed_opportunities(),
         lead_counts=lead_status_counts(),
-        opportunities=opportunities,
     )

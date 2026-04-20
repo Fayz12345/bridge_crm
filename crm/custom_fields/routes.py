@@ -12,7 +12,12 @@ from bridge_crm.crm.custom_fields.queries import (
     update_custom_field,
 )
 
-custom_fields_bp = Blueprint("custom_fields", __name__, url_prefix="/setup/custom-fields")
+custom_fields_bp = Blueprint(
+    "custom_fields",
+    __name__,
+    url_prefix="/setup/custom-fields",
+    template_folder="../../templates",
+)
 
 
 @custom_fields_bp.route("/")

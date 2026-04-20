@@ -5,76 +5,240 @@
 {% block content %}
 <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
   <div>
-    <p class="text-uppercase small fw-semibold text-body-secondary mb-1">Foundation Phase</p>
-    <h1 class="h3 mb-1">Sales dashboard</h1>
-    <p class="text-body-secondary mb-0">This is the initial CRM shell. Leads, opportunities, products, and communications are staged for the next phases.</p>
+    <p class="text-uppercase small fw-semibold text-body-secondary mb-1">Overview</p>
+    <h1 class="h3 mb-1">{% if role == 'rep' %}My Dashboard{% else %}Sales Dashboard{% endif %}</h1>
+    <p class="text-body-secondary mb-0">{% if role == 'rep' %}Your pipeline, opportunities, and leads.{% else %}Key metrics and pipeline activity at a glance.{% endif %}</p>
   </div>
-  <a class="btn btn-primary" href="{{ url_for('accounts.create_view') }}">New Account</a>
+  <a class="btn btn-primary" href="{{ url_for('opportunities.create_view') }}"><span class="material-symbols-outlined">add</span> New Opportunity</a>
 </div>
+
+{% if role == 'rep' %}
+{# ------------------------------------------------------------------ #}
+{# REP DASHBOARD                                                      #}
+{# ------------------------------------------------------------------ #}
 
 <div class="row g-3 mb-4">
   <div class="col-12 col-sm-6 col-xl-3">
-    <div class="crm-card h-100">
-      <div class="card-body">
-        <p class="small text-uppercase text-body-secondary fw-semibold mb-2">Accounts</p>
-        <div class="display-6">{{ metrics.accounts }}</div>
+    <div class="crm-card crm-metric h-100" style="border-left:3px solid var(--crm-teal)">
+      <div class="card-body d-flex align-items-center gap-3">
+        <span class="material-symbols-outlined" style="font-size:36px;color:var(--crm-teal);opacity:0.7">handshake</span>
+        <div>
+          <p class="small text-uppercase text-body-secondary fw-semibold mb-1">My Open Deals</p>
+          <div class="display-6">{{ my_pipeline.count }}</div>
+        </div>
       </div>
     </div>
   </div>
   <div class="col-12 col-sm-6 col-xl-3">
-    <div class="crm-card h-100">
-      <div class="card-body">
-        <p class="small text-uppercase text-body-secondary fw-semibold mb-2">Leads</p>
-        <div class="display-6">{{ metrics.leads }}</div>
+    <div class="crm-card crm-metric h-100" style="border-left:3px solid var(--crm-teal)">
+      <div class="card-body d-flex align-items-center gap-3">
+        <span class="material-symbols-outlined" style="font-size:36px;color:var(--crm-teal);opacity:0.7">payments</span>
+        <div>
+          <p class="small text-uppercase text-body-secondary fw-semibold mb-1">My Pipeline Value</p>
+          <div class="display-6">${{ "{:,.0f}".format(my_pipeline.value) }}</div>
+        </div>
       </div>
     </div>
   </div>
   <div class="col-12 col-sm-6 col-xl-3">
-    <div class="crm-card h-100">
-      <div class="card-body">
-        <p class="small text-uppercase text-body-secondary fw-semibold mb-2">Opportunities</p>
-        <div class="display-6">{{ metrics.opportunities }}</div>
-      </div>
-    </div>
-  </div>
-  <div class="col-12 col-sm-6 col-xl-3">
-    <div class="crm-card h-100">
-      <div class="card-body">
-        <p class="small text-uppercase text-body-secondary fw-semibold mb-2">Pipeline Value</p>
-        <div class="display-6">${{ "{:,.0f}".format(metrics.pipeline_value) }}</div>
+    <div class="crm-card crm-metric h-100" style="border-left:3px solid var(--crm-teal)">
+      <div class="card-body d-flex align-items-center gap-3">
+        <span class="material-symbols-outlined" style="font-size:36px;color:var(--crm-teal);opacity:0.7">person_search</span>
+        <div>
+          <p class="small text-uppercase text-body-secondary fw-semibold mb-1">My Leads</p>
+          <div class="display-6">{{ my_lead_count }}</div>
+        </div>
       </div>
     </div>
   </div>
 </div>
 
-<div class="crm-card">
-  <div class="card-body">
-    <div class="row g-4">
-      <div class="col-lg-6">
-        <h2 class="h5 mb-3">Lead Funnel</h2>
-        <div class="row g-2">
-          {% for status, count in lead_counts.items() %}
-          <div class="col-6">
-            <div class="p-3 rounded-3 bg-body-tertiary h-100">
-              <div class="crm-field-label">{{ status.replace('_', ' ') }}</div>
-              <div class="h4 mb-0">{{ count }}</div>
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="crm-card h-100">
+      <div class="card-body">
+        <h2 class="h5 mb-3 pb-2" style="border-bottom:2px solid var(--crm-teal)">My Opportunities</h2>
+        {% for opp in my_opportunities %}
+        <a class="d-block p-3 rounded-3 bg-body-tertiary mb-2 text-decoration-none" href="{{ url_for('opportunities.detail_view', opportunity_id=opp.id) }}">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <div class="fw-semibold" style="color:var(--crm-navy-light)">{{ opp.title }}</div>
+              <div class="small text-body-secondary">{{ opp.account_name }}{% if opp.amount %} · ${{ "{:,.0f}".format(opp.amount) }}{% endif %}</div>
             </div>
+            <span class="badge" style="background:rgba(0,169,157,0.12);color:var(--crm-teal)">{{ opp.stage.replace('_', ' ') }}</span>
           </div>
-          {% endfor %}
-        </div>
-      </div>
-      <div class="col-lg-6">
-        <h2 class="h5 mb-3">Recent Opportunities</h2>
-        {% for opportunity in opportunities %}
-        <div class="p-3 rounded-3 bg-body-tertiary mb-2">
-          <div class="fw-semibold">{{ opportunity.title }}</div>
-          <div class="small text-body-secondary">{{ opportunity.account_name }} · {{ opportunity.stage.replace('_', ' ') }}</div>
-        </div>
+        </a>
         {% else %}
-        <p class="text-body-secondary mb-0">No opportunities yet.</p>
+        <div class="crm-empty-state">
+          <span class="material-symbols-outlined">handshake</span>
+          <span>No opportunities assigned to you yet.</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-5">
+    <div class="crm-card h-100">
+      <div class="card-body">
+        <h2 class="h5 mb-3 pb-2" style="border-bottom:2px solid var(--crm-teal)">My Leads</h2>
+        {% for lead in my_leads %}
+        <a class="d-block p-3 rounded-3 bg-body-tertiary mb-2 text-decoration-none" href="{{ url_for('leads.detail_view', lead_id=lead.id) }}">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <div class="fw-semibold" style="color:var(--crm-navy-light)">{{ lead.first_name }} {{ lead.last_name }}</div>
+              <div class="small text-body-secondary">{{ lead.company_name or "—" }}</div>
+            </div>
+            <span class="badge" style="background:rgba(0,169,157,0.12);color:var(--crm-teal)">{{ lead.status.replace('_', ' ') }}</span>
+          </div>
+        </a>
+        {% else %}
+        <div class="crm-empty-state">
+          <span class="material-symbols-outlined">person_search</span>
+          <span>No leads assigned to you yet.</span>
+        </div>
         {% endfor %}
       </div>
     </div>
   </div>
 </div>
+
+{% else %}
+{# ------------------------------------------------------------------ #}
+{# MANAGER / ADMIN DASHBOARD                                          #}
+{# ------------------------------------------------------------------ #}
+
+<div class="row g-3 mb-4">
+  <div class="col-12 col-sm-6 col-xl-3">
+    <div class="crm-card crm-metric h-100" style="border-left:3px solid var(--crm-teal)">
+      <div class="card-body d-flex align-items-center gap-3">
+        <span class="material-symbols-outlined" style="font-size:36px;color:var(--crm-teal);opacity:0.7">handshake</span>
+        <div>
+          <p class="small text-uppercase text-body-secondary fw-semibold mb-1">Open Opportunities</p>
+          <div class="display-6">{{ open_opportunities.count }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-sm-6 col-xl-3">
+    <div class="crm-card crm-metric h-100" style="border-left:3px solid var(--crm-teal)">
+      <div class="card-body d-flex align-items-center gap-3">
+        <span class="material-symbols-outlined" style="font-size:36px;color:var(--crm-teal);opacity:0.7">payments</span>
+        <div>
+          <p class="small text-uppercase text-body-secondary fw-semibold mb-1">Open Pipeline Value</p>
+          <div class="display-6">${{ "{:,.0f}".format(open_opportunities.value) }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-lg-7">
+    <div class="crm-card h-100">
+      <div class="card-body">
+        <h2 class="h5 mb-3 pb-2" style="border-bottom:2px solid var(--crm-teal)">All Recent Opportunities</h2>
+        {% for opp in recent_opportunities %}
+        <a class="d-block p-3 rounded-3 bg-body-tertiary mb-2 text-decoration-none" href="{{ url_for('opportunities.detail_view', opportunity_id=opp.id) }}">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <div class="fw-semibold" style="color:var(--crm-navy-light)">{{ opp.title }}</div>
+              <div class="small text-body-secondary">{{ opp.account_name }} · {{ opp.owner_name or "Unassigned" }}{% if opp.amount %} · ${{ "{:,.0f}".format(opp.amount) }}{% endif %}</div>
+            </div>
+            <span class="badge" style="background:rgba(0,169,157,0.12);color:var(--crm-teal)">{{ opp.stage.replace('_', ' ') }}</span>
+          </div>
+        </a>
+        {% else %}
+        <div class="crm-empty-state">
+          <span class="material-symbols-outlined">handshake</span>
+          <span>No opportunities yet.</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-5">
+    <div class="crm-card h-100">
+      <div class="card-body">
+        <h2 class="h5 mb-3 pb-2" style="border-bottom:2px solid var(--crm-teal)">Lead Funnel</h2>
+        <div class="row g-2">
+          {% for status, count in lead_counts.items() %}
+          <div class="col-6">
+            <div class="p-3 rounded-3 bg-body-tertiary h-100">
+              <div class="d-flex justify-content-between align-items-center">
+                <div class="crm-field-label mb-0">{{ status.replace('_', ' ') }}</div>
+                <div class="h4 mb-0" style="color:var(--crm-teal)">{{ count }}</div>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-4">
+    <div class="crm-card h-100">
+      <div class="card-body">
+        <h2 class="h5 mb-3 pb-2" style="border-bottom:2px solid var(--crm-teal)">Top Accounts by Value</h2>
+        {% for acct in top_accounts %}
+        <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+          <div>
+            <div class="fw-semibold">{{ acct.company_name }}</div>
+            <div class="small text-body-secondary">{{ acct.opportunity_count }} deal{{ "s" if acct.opportunity_count != 1 }}</div>
+          </div>
+          <div class="fw-semibold" style="color:var(--crm-teal)">${{ "{:,.0f}".format(acct.total_value) }}</div>
+        </div>
+        {% else %}
+        <p class="text-body-secondary mb-0">No account data yet.</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="crm-card h-100">
+      <div class="card-body">
+        <h2 class="h5 mb-3 pb-2" style="border-bottom:2px solid var(--crm-teal)">Top Selling Products</h2>
+        {% for product in top_products %}
+        <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+          <div>
+            <div class="fw-semibold">{{ product.brand }} {{ product.model }}</div>
+            <div class="small text-body-secondary">{{ product.total_quantity }} units sold</div>
+          </div>
+          <div class="fw-semibold" style="color:var(--crm-teal)">${{ "{:,.0f}".format(product.total_value) }}</div>
+        </div>
+        {% else %}
+        <p class="text-body-secondary mb-0">No closed-won product data yet.</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="crm-card h-100">
+      <div class="card-body">
+        <h2 class="h5 mb-3 pb-2" style="border-bottom:2px solid var(--crm-teal)">Recently Closed</h2>
+        {% for opp in closed_opportunities %}
+        <a class="d-block p-3 rounded-3 bg-body-tertiary mb-2 text-decoration-none" href="{{ url_for('opportunities.detail_view', opportunity_id=opp.id) }}">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <div class="fw-semibold" style="color:var(--crm-navy-light)">{{ opp.title }}</div>
+              <div class="small text-body-secondary">{{ opp.account_name }}{% if opp.amount %} · ${{ "{:,.0f}".format(opp.amount) }}{% endif %}</div>
+            </div>
+            {% if opp.stage == 'closed_won' %}
+            <span class="badge text-bg-success">Won</span>
+            {% else %}
+            <span class="badge text-bg-danger">Lost</span>
+            {% endif %}
+          </div>
+        </a>
+        {% else %}
+        <p class="text-body-secondary mb-0">No closed deals yet.</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endif %}
 {% endblock %}

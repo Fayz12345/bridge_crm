@@ -10,12 +10,12 @@
     <p class="text-body-secondary mb-0">{{ lead.company_name or "No company set" }}</p>
   </div>
   <div class="d-flex gap-2">
-    <a class="btn btn-outline-secondary" href="{{ url_for('leads.list_view') }}">Back</a>
-    <a class="btn btn-outline-primary" href="{{ url_for('leads.edit_view', lead_id=lead.id) }}">Edit Lead</a>
+    <a class="btn btn-outline-secondary" href="{{ url_for('leads.list_view') }}"><span class="material-symbols-outlined">arrow_back</span> Back</a>
+    <a class="btn btn-outline-primary" href="{{ url_for('leads.edit_view', lead_id=lead.id) }}"><span class="material-symbols-outlined">edit</span> Edit Lead</a>
     {% if lead.status != 'converted' %}
     <form method="post" action="{{ url_for('leads.convert_view', lead_id=lead.id) }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <button class="btn btn-primary" type="submit">Convert to Opportunity</button>
+      <button class="btn btn-primary" type="submit"><span class="material-symbols-outlined">swap_horiz</span> Convert to Opportunity</button>
     </form>
     {% endif %}
   </div>
@@ -25,7 +25,7 @@
   <div class="col-lg-7">
     <div class="crm-card">
       <div class="card-body">
-        <h2 class="h5 mb-3">Lead Profile</h2>
+        <h2 class="h5 mb-3 pb-2" style="border-bottom:2px solid var(--crm-teal)">Lead Profile</h2>
         <div class="row g-3">
           <div class="col-md-6">
             <div class="crm-field-label">Status</div>

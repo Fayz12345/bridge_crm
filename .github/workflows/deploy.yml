@@ -1,0 +1,47 @@
+name: Deploy
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main, sandbox]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    steps:
+      - name: Determine environment
+        id: env
+        run: |
+          BRANCH="${{ github.event.workflow_run.head_branch }}"
+          if [ "$BRANCH" = "main" ]; then
+            echo "target=production" >> "$GITHUB_OUTPUT"
+            echo "app_dir=/home/ubuntu/bridge_crm" >> "$GITHUB_OUTPUT"
+            echo "service=bridge-crm" >> "$GITHUB_OUTPUT"
+          elif [ "$BRANCH" = "sandbox" ]; then
+            echo "target=sandbox" >> "$GITHUB_OUTPUT"
+            echo "app_dir=/home/ubuntu/bridge_crm_sandbox" >> "$GITHUB_OUTPUT"
+            echo "service=bridge-crm-sandbox" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Deploy to ${{ steps.env.outputs.target }}
+        if: steps.env.outputs.target != ''
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd ${{ steps.env.outputs.app_dir }}
+            git fetch origin
+            git reset --hard origin/${{ github.event.workflow_run.head_branch }}
+            source /home/ubuntu/crm-env/bin/activate
+            pip install -r requirements.txt --quiet
+            sudo systemctl restart ${{ steps.env.outputs.service }}
+            sleep 3
+            if [ "${{ steps.env.outputs.target }}" = "production" ]; then
+              curl -sf https://crm.bridge-renew.net/health || echo "WARNING: Health check failed"
+            else
+              curl -sf https://dev.crm.bridge-renew.net/health || echo "WARNING: Health check failed"
+            fi

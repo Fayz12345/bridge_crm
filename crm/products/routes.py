@@ -13,7 +13,12 @@ from bridge_crm.crm.products.queries import (
     update_product_custom_fields,
 )
 
-products_bp = Blueprint("products", __name__, url_prefix="/products")
+products_bp = Blueprint(
+    "products",
+    __name__,
+    url_prefix="/products",
+    template_folder="../../templates",
+)
 
 
 @products_bp.route("/")

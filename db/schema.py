@@ -270,6 +270,28 @@ crm_opportunity_lines = Table(
     Column("updated_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
 )
 
+crm_documents = Table(
+    "crm_documents",
+    metadata,
+    Column("id", Integer, primary_key=True),
+    Column(
+        "opportunity_id",
+        ForeignKey("crm_opportunities.id", ondelete="CASCADE"),
+        nullable=False,
+    ),
+    Column("document_type", String(20), nullable=False),
+    Column("document_number", String(50), nullable=False, unique=True),
+    Column("file_name", String(255), nullable=False),
+    Column("file_path", Text, nullable=False),
+    Column("file_size_bytes", Integer),
+    Column("generated_by", ForeignKey("crm_users.id")),
+    Column("created_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
+    CheckConstraint(
+        "document_type IN ('quote', 'invoice')",
+        name="document_type",
+    ),
+)
+
 crm_emails = Table(
     "crm_emails",
     metadata,
@@ -287,6 +309,7 @@ crm_emails = Table(
     Column("sent_at", DateTime(timezone=True)),
     Column("sent_by", ForeignKey("crm_users.id")),
     Column("error_message", Text),
+    Column("attachments_json", JSONB().with_variant(JSON(), "sqlite")),
     Column("created_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
     CheckConstraint("direction IN ('outbound', 'inbound')", name="email_direction"),
     CheckConstraint(
@@ -375,6 +398,7 @@ Index("ix_crm_opportunities_owner_id", crm_opportunities.c.owner_id)
 Index("ix_crm_products_model_name", crm_products.c.model_name)
 Index("ix_crm_products_brand_name", crm_products.c.brand_name)
 Index("ix_crm_custom_fields_object_type", crm_custom_fields.c.object_type)
+Index("ix_crm_documents_opportunity", crm_documents.c.opportunity_id)
 Index("ix_crm_activities_related", crm_activities.c.related_type, crm_activities.c.related_id)
 Index("ix_crm_notifications_user_read", crm_notifications.c.user_id, crm_notifications.c.is_read)
 Index("ix_crm_login_attempts_ip_address", crm_login_attempts.c.ip_address)

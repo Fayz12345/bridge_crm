@@ -10,7 +10,12 @@ from bridge_crm.crm.auth.queries import (
 )
 from bridge_crm.crm.auth.routes import admin_required
 
-users_bp = Blueprint("users", __name__, url_prefix="/users")
+users_bp = Blueprint(
+    "users",
+    __name__,
+    url_prefix="/users",
+    template_folder="../../templates",
+)
 
 
 def _normalize_role(value: str | None) -> str:

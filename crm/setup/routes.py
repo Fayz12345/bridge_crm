@@ -2,7 +2,12 @@ from flask import Blueprint, render_template
 
 from bridge_crm.crm.auth.routes import admin_required
 
-setup_bp = Blueprint("setup", __name__, url_prefix="/setup")
+setup_bp = Blueprint(
+    "setup",
+    __name__,
+    url_prefix="/setup",
+    template_folder="../../templates",
+)
 
 
 @setup_bp.route("/")

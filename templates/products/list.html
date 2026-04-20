@@ -76,7 +76,10 @@
         </tr>
         {% else %}
         <tr>
-          <td colspan="6" class="text-center py-5 text-body-secondary">No synced products yet. ERP sync will populate this module once connectivity is configured.</td>
+          <td colspan="6" class="crm-empty-state">
+            <span class="material-symbols-outlined">inventory_2</span>
+            No synced products yet. ERP sync will populate this module once connectivity is configured.
+          </td>
         </tr>
         {% endfor %}
       </tbody>
