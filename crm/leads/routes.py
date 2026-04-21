@@ -12,6 +12,7 @@ from bridge_crm.crm.custom_fields.queries import (
 from bridge_crm.crm.leads.queries import (
     VALID_LEAD_STATUSES,
     create_lead,
+    delete_lead,
     get_lead,
     list_leads,
     update_lead,
@@ -260,3 +261,21 @@ def convert_view(lead_id: int):
     )
     flash("Lead converted to account and opportunity.", "success")
     return redirect(url_for("opportunities.detail_view", opportunity_id=opportunity_id))
+
+
+@leads_bp.route("/<int:lead_id>/delete", methods=["POST"])
+@login_required
+def delete_view(lead_id: int):
+    if g.user["role"] != "admin":
+        flash("Only admins can delete leads.", "danger")
+        return redirect(url_for("leads.detail_view", lead_id=lead_id))
+
+    lead = get_lead(lead_id)
+    if not lead:
+        flash("Lead not found.", "danger")
+        return redirect(url_for("leads.list_view"))
+
+    name = f"{lead['first_name']} {lead['last_name']}"
+    delete_lead(lead_id)
+    flash(f'Lead "{name}" deleted.', "success")
+    return redirect(url_for("leads.list_view"))

@@ -15,7 +15,15 @@
     <p class="text-uppercase small fw-semibold text-body-secondary mb-1">Product Detail</p>
     <h1 class="h3 mb-0">{{ product.brand_name }} {{ product.model_name }}</h1>
   </div>
-  <a class="btn btn-outline-secondary" href="{{ url_for('products.list_view') }}"><span class="material-symbols-outlined">arrow_back</span> Back to Products</a>
+  <div class="d-flex gap-2">
+    <a class="btn btn-outline-secondary" href="{{ url_for('products.list_view') }}"><span class="material-symbols-outlined">arrow_back</span> Back to Products</a>
+    {% if g.user.role == 'admin' %}
+    <form method="post" action="{{ url_for('products.delete_view', product_id=product.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="btn btn-outline-danger" type="submit" data-confirm="Delete this product? This cannot be undone."><span class="material-symbols-outlined">delete</span> Delete</button>
+    </form>
+    {% endif %}
+  </div>
 </div>
 
 <div class="crm-card">

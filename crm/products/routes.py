@@ -1,4 +1,4 @@
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask import Blueprint, flash, g, redirect, render_template, request, url_for
 
 from bridge_crm.crm.auth.routes import login_required
 from bridge_crm.crm.custom_fields.queries import (
@@ -7,6 +7,7 @@ from bridge_crm.crm.custom_fields.queries import (
     list_custom_fields,
 )
 from bridge_crm.crm.products.queries import (
+    delete_product,
     get_product,
     get_product_filter_options,
     list_products,
@@ -67,3 +68,21 @@ def update_custom_fields_view(product_id: int):
     update_product_custom_fields(product_id, custom_fields)
     flash("Product custom fields updated.", "success")
     return redirect(url_for("products.detail_view", product_id=product_id))
+
+
+@products_bp.route("/<int:product_id>/delete", methods=["POST"])
+@login_required
+def delete_view(product_id: int):
+    if g.user["role"] != "admin":
+        flash("Only admins can delete products.", "danger")
+        return redirect(url_for("products.detail_view", product_id=product_id))
+
+    product = get_product(product_id)
+    if not product:
+        flash("Product not found.", "danger")
+        return redirect(url_for("products.list_view"))
+
+    label = f"{product['brand_name']} {product['model_name']}"
+    delete_product(product_id)
+    flash(f'Product "{label}" deleted.', "success")
+    return redirect(url_for("products.list_view"))

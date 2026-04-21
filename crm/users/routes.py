@@ -9,6 +9,7 @@ from bridge_crm.crm.auth.queries import (
     update_user,
 )
 from bridge_crm.crm.auth.routes import admin_required
+from bridge_crm.integrations.email_sender import send_email, smtp_configured
 
 users_bp = Blueprint(
     "users",
@@ -44,8 +45,8 @@ def create_view():
 
         if not email or not full_name or not password:
             flash("Email, full name, and password are required.", "danger")
-        elif len(password) < 12:
-            flash("Password must be at least 12 characters.", "danger")
+        elif len(password) < 8:
+            flash("Password must be at least 8 characters.", "danger")
         elif get_user_by_email(email):
             flash("A user with that email already exists.", "danger")
         else:
@@ -56,7 +57,27 @@ def create_view():
                 role=role,
                 is_active=is_active,
             )
-            flash("User created.", "success")
+            if smtp_configured():
+                try:
+                    login_url = url_for("auth.login", _external=True)
+                    send_email(
+                        to_address=email,
+                        subject="Your Bridge CRM account has been created",
+                        body_text=(
+                            f"Hi {full_name},\n\n"
+                            f"An account has been created for you on Bridge CRM.\n\n"
+                            f"Email: {email}\n"
+                            f"Password: {password}\n"
+                            f"Role: {role.title()}\n\n"
+                            f"Log in here: {login_url}\n\n"
+                            f"Please change your password after your first login."
+                        ),
+                    )
+                    flash("User created and welcome email sent.", "success")
+                except Exception:
+                    flash("User created but the welcome email could not be sent.", "warning")
+            else:
+                flash("User created. SMTP is not configured so no welcome email was sent.", "success")
             return redirect(url_for("users.list_view"))
 
     return render_template(
@@ -86,8 +107,8 @@ def edit_view(user_id: int):
 
         if not full_name:
             flash("Full name is required.", "danger")
-        elif password and len(password) < 12:
-            flash("Password must be at least 12 characters.", "danger")
+        elif password and len(password) < 8:
+            flash("Password must be at least 8 characters.", "danger")
         else:
             update_user(
                 user_id=user_id,

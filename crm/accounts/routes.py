@@ -3,6 +3,7 @@ from flask import Blueprint, flash, g, redirect, render_template, request, url_f
 from bridge_crm.crm.accounts.queries import (
     create_contact_for_account,
     create_account,
+    delete_account,
     get_account,
     get_account_by_erp_client_id,
     get_contact_for_account,
@@ -252,3 +253,21 @@ def edit_view(account_id: int):
         page_title="Edit Account",
         submit_label="Save Changes",
     )
+
+
+@accounts_bp.route("/<int:account_id>/delete", methods=["POST"])
+@login_required
+def delete_view(account_id: int):
+    if g.user["role"] != "admin":
+        flash("Only admins can delete accounts.", "danger")
+        return redirect(url_for("accounts.detail_view", account_id=account_id))
+
+    account = get_account(account_id)
+    if not account:
+        flash("Account not found.", "danger")
+        return redirect(url_for("accounts.list_view"))
+
+    name = account["company_name"]
+    delete_account(account_id)
+    flash(f'Account "{name}" and all associated data deleted.', "success")
+    return redirect(url_for("accounts.list_view"))

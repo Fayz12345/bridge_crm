@@ -287,7 +287,7 @@ crm_documents = Table(
     Column("generated_by", ForeignKey("crm_users.id")),
     Column("created_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
     CheckConstraint(
-        "document_type IN ('quote', 'invoice')",
+        "document_type IN ('quote', 'invoice', 'sales_order')",
         name="document_type",
     ),
 )

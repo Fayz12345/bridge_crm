@@ -12,6 +12,12 @@
   <div class="d-flex gap-2">
     <a class="btn btn-outline-secondary" href="{{ url_for('opportunities.list_view') }}"><span class="material-symbols-outlined">arrow_back</span> Back</a>
     <a class="btn btn-primary" href="{{ url_for('opportunities.edit_view', opportunity_id=opportunity.id) }}"><span class="material-symbols-outlined">edit</span> Edit Opportunity</a>
+    {% if g.user.role == 'admin' %}
+    <form method="post" action="{{ url_for('opportunities.delete_view', opportunity_id=opportunity.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="btn btn-outline-danger" type="submit" data-confirm="Delete this opportunity and all its quote lines, documents, and emails? This cannot be undone."><span class="material-symbols-outlined">delete</span> Delete</button>
+    </form>
+    {% endif %}
   </div>
 </div>
 
@@ -77,11 +83,12 @@
                 <th>Qty</th>
                 <th>Unit</th>
                 <th>Total</th>
+                <th style="width:1%"></th>
               </tr>
             </thead>
             <tbody>
               {% for line in line_items %}
-              <tr>
+              <tr id="line-display-{{ line.id }}">
                 <td>
                   <div class="fw-semibold">{{ line.brand }} {{ line.model }}</div>
                   <div class="small text-body-secondary">{{ line.grade or "—" }} · {{ line.storage or "—" }}</div>
@@ -89,10 +96,60 @@
                 <td>{{ line.quantity }}</td>
                 <td>${{ "{:,.2f}".format(line.unit_price) }}</td>
                 <td>${{ "{:,.2f}".format(line.line_total) }}</td>
+                <td class="text-nowrap">
+                  <button class="btn btn-sm btn-outline-secondary" type="button" onclick="document.getElementById('line-display-{{ line.id }}').classList.add('d-none'); document.getElementById('line-edit-{{ line.id }}').classList.remove('d-none');" title="Edit">
+                    <span class="material-symbols-outlined" style="font-size:16px">edit</span>
+                  </button>
+                  <form method="post" action="{{ url_for('opportunities.delete_line_view', opportunity_id=opportunity.id, line_id=line.id) }}" class="d-inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button class="btn btn-sm btn-outline-danger" type="submit" data-confirm="Remove this quote line?" title="Remove">
+                      <span class="material-symbols-outlined" style="font-size:16px">close</span>
+                    </button>
+                  </form>
+                </td>
+              </tr>
+              <tr id="line-edit-{{ line.id }}" class="d-none">
+                <td colspan="5">
+                  <form method="post" action="{{ url_for('opportunities.edit_line_view', opportunity_id=opportunity.id, line_id=line.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="row g-2 align-items-end">
+                      <div class="col-md-2">
+                        <label class="form-label small mb-0">Brand</label>
+                        <input class="form-control form-control-sm" name="brand" value="{{ line.brand }}" required>
+                      </div>
+                      <div class="col-md-2">
+                        <label class="form-label small mb-0">Model</label>
+                        <input class="form-control form-control-sm" name="model" value="{{ line.model }}" required>
+                      </div>
+                      <div class="col-md-1">
+                        <label class="form-label small mb-0">Grade</label>
+                        <input class="form-control form-control-sm" name="grade" value="{{ line.grade or '' }}">
+                      </div>
+                      <div class="col-md-1">
+                        <label class="form-label small mb-0">Storage</label>
+                        <input class="form-control form-control-sm" name="storage" value="{{ line.storage or '' }}">
+                      </div>
+                      <div class="col-md-1">
+                        <label class="form-label small mb-0">Qty</label>
+                        <input class="form-control form-control-sm" name="quantity" type="number" min="1" value="{{ line.quantity }}" required>
+                      </div>
+                      <div class="col-md-2">
+                        <label class="form-label small mb-0">Unit Price</label>
+                        <input class="form-control form-control-sm" name="unit_price" type="number" step="0.01" value="{{ line.unit_price }}" required>
+                      </div>
+                      <div class="col-md-1">
+                        <button class="btn btn-sm btn-primary" type="submit">Save</button>
+                      </div>
+                      <div class="col-md-1">
+                        <button class="btn btn-sm btn-outline-secondary" type="button" onclick="document.getElementById('line-edit-{{ line.id }}').classList.add('d-none'); document.getElementById('line-display-{{ line.id }}').classList.remove('d-none');">Cancel</button>
+                      </div>
+                    </div>
+                  </form>
+                </td>
               </tr>
               {% else %}
               <tr>
-                <td colspan="4" class="text-body-secondary py-4 text-center">No quote lines yet.</td>
+                <td colspan="5" class="text-body-secondary py-4 text-center">No quote lines yet.</td>
               </tr>
               {% endfor %}
             </tbody>
@@ -170,10 +227,10 @@
               </button>
             </form>
             {% if opportunity.stage == 'closed_won' %}
-            <form method="post" action="{{ url_for('opportunities.generate_invoice_view', opportunity_id=opportunity.id) }}">
+            <form method="post" action="{{ url_for('opportunities.generate_sales_order_view', opportunity_id=opportunity.id) }}">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button class="btn btn-outline-primary" type="submit">
-                <span class="material-symbols-outlined">receipt_long</span> Generate Invoice
+                <span class="material-symbols-outlined">receipt_long</span> Generate Sales Order
               </button>
             </form>
             {% endif %}
@@ -294,7 +351,7 @@
           </div>
         </div>
         {% else %}
-        <p class="text-body-secondary mb-0">No quote or invoice PDFs generated yet.</p>
+        <p class="text-body-secondary mb-0">No quote or sales order PDFs generated yet.</p>
         {% endfor %}
       </div>
     </div>

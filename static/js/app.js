@@ -54,6 +54,13 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  document.querySelectorAll(".password-toggle").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var input = document.getElementById(btn.getAttribute("data-target"));
+      if (input) input.type = input.type === "password" ? "text" : "password";
+    });
+  });
+
   if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("/crm/static/service-worker.js").catch(() => {});
   }

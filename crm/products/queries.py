@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import func, select, update
+from sqlalchemy import delete, func, select, update
 
 from bridge_crm.db.engine import get_connection
 from bridge_crm.db.schema import crm_products
@@ -97,3 +97,9 @@ def list_product_stock_groups() -> list[dict]:
     with get_connection() as connection:
         rows = connection.execute(statement).mappings().all()
     return [dict(row) for row in rows]
+
+
+def delete_product(product_id: int) -> None:
+    statement = delete(crm_products).where(crm_products.c.id == product_id)
+    with get_connection() as connection:
+        connection.execute(statement)

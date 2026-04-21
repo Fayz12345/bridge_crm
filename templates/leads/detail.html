@@ -12,6 +12,12 @@
   <div class="d-flex gap-2">
     <a class="btn btn-outline-secondary" href="{{ url_for('leads.list_view') }}"><span class="material-symbols-outlined">arrow_back</span> Back</a>
     <a class="btn btn-outline-primary" href="{{ url_for('leads.edit_view', lead_id=lead.id) }}"><span class="material-symbols-outlined">edit</span> Edit Lead</a>
+    {% if g.user.role == 'admin' %}
+    <form method="post" action="{{ url_for('leads.delete_view', lead_id=lead.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="btn btn-outline-danger" type="submit" data-confirm="Delete this lead? This cannot be undone."><span class="material-symbols-outlined">delete</span> Delete</button>
+    </form>
+    {% endif %}
     {% if lead.status != 'converted' %}
     <form method="post" action="{{ url_for('leads.convert_view', lead_id=lead.id) }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

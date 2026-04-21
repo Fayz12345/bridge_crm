@@ -24,7 +24,10 @@ from bridge_crm.crm.notifications.queries import create_notification
 from bridge_crm.crm.opportunities.queries import (
     create_opportunity_line,
     create_opportunity,
+    delete_opportunity,
+    delete_opportunity_line,
     get_opportunity,
+    get_opportunity_line,
     get_opportunity_line_items,
     get_pipeline_stage,
     get_pipeline_stages,
@@ -32,13 +35,14 @@ from bridge_crm.crm.opportunities.queries import (
     list_contacts_for_account_select,
     list_opportunities,
     opportunities_by_stage,
+    update_opportunity_line,
     update_opportunity_stage,
     update_opportunity,
     upsert_pipeline_stage,
 )
 from bridge_crm.crm.products.queries import list_product_stock_groups
 from bridge_crm.integrations.email_sender import send_email, smtp_configured
-from bridge_crm.integrations.pdf_generator import generate_invoice_pdf, generate_quote_pdf
+from bridge_crm.integrations.pdf_generator import generate_sales_order_pdf, generate_quote_pdf
 
 opportunities_bp = Blueprint(
     "opportunities",
@@ -461,6 +465,86 @@ def add_line_view(opportunity_id: int):
     return redirect(url_for("opportunities.detail_view", opportunity_id=opportunity_id))
 
 
+@opportunities_bp.route("/<int:opportunity_id>/lines/<int:line_id>/edit", methods=["POST"])
+@login_required
+def edit_line_view(opportunity_id: int, line_id: int):
+    opportunity = get_opportunity(opportunity_id)
+    if not opportunity:
+        flash("Opportunity not found.", "danger")
+        return redirect(url_for("opportunities.list_view"))
+
+    line = get_opportunity_line(opportunity_id, line_id)
+    if not line:
+        flash("Quote line not found.", "danger")
+        return redirect(url_for("opportunities.detail_view", opportunity_id=opportunity_id))
+
+    try:
+        update_opportunity_line(
+            opportunity_id,
+            line_id,
+            {
+                "brand": request.form.get("brand", "").strip(),
+                "model": request.form.get("model", "").strip(),
+                "grade": request.form.get("grade", "").strip() or None,
+                "category": request.form.get("category", "").strip() or None,
+                "storage": request.form.get("storage", "").strip() or None,
+                "quantity": request.form.get("quantity", "").strip() or "0",
+                "unit_price": request.form.get("unit_price", "").strip(),
+                "notes": request.form.get("notes", "").strip() or None,
+            },
+        )
+    except Exception as exc:
+        flash(f"Could not update quote line: {exc}", "danger")
+        return redirect(url_for("opportunities.detail_view", opportunity_id=opportunity_id))
+
+    flash("Quote line updated.", "success")
+    return redirect(url_for("opportunities.detail_view", opportunity_id=opportunity_id))
+
+
+@opportunities_bp.route("/<int:opportunity_id>/lines/<int:line_id>/delete", methods=["POST"])
+@login_required
+def delete_line_view(opportunity_id: int, line_id: int):
+    opportunity = get_opportunity(opportunity_id)
+    if not opportunity:
+        flash("Opportunity not found.", "danger")
+        return redirect(url_for("opportunities.list_view"))
+
+    line = get_opportunity_line(opportunity_id, line_id)
+    if not line:
+        flash("Quote line not found.", "danger")
+        return redirect(url_for("opportunities.detail_view", opportunity_id=opportunity_id))
+
+    delete_opportunity_line(opportunity_id, line_id)
+    log_activity(
+        "opportunity",
+        opportunity_id,
+        "product_added",
+        f"Quote line removed for {line['brand']} {line['model']}.",
+        g.user["id"],
+        {"line_id": line_id},
+    )
+    flash("Quote line removed.", "success")
+    return redirect(url_for("opportunities.detail_view", opportunity_id=opportunity_id))
+
+
+@opportunities_bp.route("/<int:opportunity_id>/delete", methods=["POST"])
+@login_required
+def delete_view(opportunity_id: int):
+    if g.user["role"] != "admin":
+        flash("Only admins can delete opportunities.", "danger")
+        return redirect(url_for("opportunities.detail_view", opportunity_id=opportunity_id))
+
+    opportunity = get_opportunity(opportunity_id)
+    if not opportunity:
+        flash("Opportunity not found.", "danger")
+        return redirect(url_for("opportunities.list_view"))
+
+    title = opportunity["title"]
+    delete_opportunity(opportunity_id)
+    flash(f'Opportunity "{title}" deleted.', "success")
+    return redirect(url_for("opportunities.list_view"))
+
+
 @opportunities_bp.route("/<int:opportunity_id>/generate-quote", methods=["POST"])
 @login_required
 def generate_quote_view(opportunity_id: int):
@@ -478,23 +562,23 @@ def generate_quote_view(opportunity_id: int):
         return redirect(url_for("opportunities.detail_view", opportunity_id=opportunity_id))
 
 
-@opportunities_bp.route("/<int:opportunity_id>/generate-invoice", methods=["POST"])
+@opportunities_bp.route("/<int:opportunity_id>/generate-sales-order", methods=["POST"])
 @login_required
-def generate_invoice_view(opportunity_id: int):
+def generate_sales_order_view(opportunity_id: int):
     opportunity = get_opportunity(opportunity_id)
     if not opportunity:
         flash("Opportunity not found.", "danger")
         return redirect(url_for("opportunities.list_view"))
     if opportunity["stage"] != "closed_won":
-        flash("Invoices can only be generated for closed won opportunities.", "danger")
+        flash("Sales orders can only be generated for closed won opportunities.", "danger")
         return redirect(url_for("opportunities.detail_view", opportunity_id=opportunity_id))
 
     try:
-        document = generate_invoice_pdf(opportunity_id, g.user["id"])
-        flash("Invoice PDF generated and attached to the email form.", "success")
+        document = generate_sales_order_pdf(opportunity_id, g.user["id"])
+        flash("Sales Order PDF generated and attached to the email form.", "success")
         return redirect(_detail_url(opportunity_id, document["id"]))
     except Exception as exc:
-        flash(f"Invoice PDF could not be generated: {exc}", "warning")
+        flash(f"Sales Order PDF could not be generated: {exc}", "warning")
         return redirect(url_for("opportunities.detail_view", opportunity_id=opportunity_id))
 
 

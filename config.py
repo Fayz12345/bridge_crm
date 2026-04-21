@@ -57,8 +57,8 @@ class Settings:
     login_rate_limit_window_seconds: int
     document_storage_dir: str
     quote_valid_days: int
-    invoice_payment_terms_days: int
-    invoice_payment_terms_text: str
+    sales_order_payment_terms_days: int
+    sales_order_payment_terms_text: str
     document_terms_text: str
     document_footer_text: str
     document_tax_rate: float
@@ -83,8 +83,8 @@ class Settings:
             "LOGIN_RATE_LIMIT_WINDOW_SECONDS": self.login_rate_limit_window_seconds,
             "DOCUMENT_STORAGE_DIR": self.document_storage_dir,
             "QUOTE_VALID_DAYS": self.quote_valid_days,
-            "INVOICE_PAYMENT_TERMS_DAYS": self.invoice_payment_terms_days,
-            "INVOICE_PAYMENT_TERMS_TEXT": self.invoice_payment_terms_text,
+            "SALES_ORDER_PAYMENT_TERMS_DAYS": self.sales_order_payment_terms_days,
+            "SALES_ORDER_PAYMENT_TERMS_TEXT": self.sales_order_payment_terms_text,
             "DOCUMENT_TERMS_TEXT": self.document_terms_text,
             "DOCUMENT_FOOTER_TEXT": self.document_footer_text,
             "DOCUMENT_TAX_RATE": self.document_tax_rate,
@@ -137,9 +137,13 @@ def get_settings() -> Settings:
             "DOCUMENT_STORAGE_DIR", str(BASE_DIR / "data" / "documents")
         ),
         quote_valid_days=int(os.getenv("QUOTE_VALID_DAYS", "30")),
-        invoice_payment_terms_days=int(os.getenv("INVOICE_PAYMENT_TERMS_DAYS", "30")),
-        invoice_payment_terms_text=os.getenv(
-            "INVOICE_PAYMENT_TERMS_TEXT", "Net 30"
+        sales_order_payment_terms_days=int(
+            os.getenv("SALES_ORDER_PAYMENT_TERMS_DAYS")
+            or os.getenv("INVOICE_PAYMENT_TERMS_DAYS", "30")
+        ),
+        sales_order_payment_terms_text=(
+            os.getenv("SALES_ORDER_PAYMENT_TERMS_TEXT")
+            or os.getenv("INVOICE_PAYMENT_TERMS_TEXT", "Net 30")
         ),
         document_terms_text=os.getenv(
             "DOCUMENT_TERMS_TEXT",

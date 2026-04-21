@@ -35,8 +35,13 @@
         </div>
         <div class="col-md-6">
           <label class="form-label" for="password">{% if user_record %}New Password{% else %}Password{% endif %}</label>
-          <input class="form-control" id="password" name="password" type="password" {% if not user_record %}required{% endif %}>
-          <div class="form-text">{% if user_record %}Leave blank to keep the current password.{% else %}Minimum 12 characters.{% endif %}</div>
+          <div class="input-group">
+            <input class="form-control" id="password" name="password" type="password" {% if not user_record %}required{% endif %}>
+            <button class="btn btn-outline-secondary password-toggle" type="button" data-target="password" tabindex="-1">
+              <span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle">visibility</span>
+            </button>
+          </div>
+          <div class="form-text">{% if user_record %}Leave blank to keep the current password.{% else %}Minimum 8 characters.{% endif %}</div>
         </div>
         <div class="col-12">
           <div class="form-check">

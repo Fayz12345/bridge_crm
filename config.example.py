@@ -43,11 +43,11 @@ LEAD_FORM_ALLOWED_PARENTS = "https://bridge-wireless.com,https://www.bridge-wire
 LOGIN_RATE_LIMIT_COUNT = 5
 LOGIN_RATE_LIMIT_WINDOW_SECONDS = 900
 
-# Quote / invoice documents
+# Quote / sales order documents
 DOCUMENT_STORAGE_DIR = ""
 QUOTE_VALID_DAYS = 30
-INVOICE_PAYMENT_TERMS_DAYS = 30
-INVOICE_PAYMENT_TERMS_TEXT = "Net 30"
+SALES_ORDER_PAYMENT_TERMS_DAYS = 30
+SALES_ORDER_PAYMENT_TERMS_TEXT = "Net 30"
 DOCUMENT_TERMS_TEXT = "Prices are valid for the stated period and subject to product availability."
 DOCUMENT_FOOTER_TEXT = "Thank you for your business."
 DOCUMENT_TAX_RATE = 0

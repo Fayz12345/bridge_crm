@@ -34,24 +34,24 @@ def generate_quote_pdf(opportunity_id: int, generated_by: int) -> dict:
     )
 
 
-def generate_invoice_pdf(opportunity_id: int, generated_by: int) -> dict:
+def generate_sales_order_pdf(opportunity_id: int, generated_by: int) -> dict:
     settings = get_settings()
     generated_at = datetime.now(timezone.utc)
-    due_date = (generated_at + timedelta(days=settings.invoice_payment_terms_days)).date()
-    document_number = f"INV-{opportunity_id}-{generated_at.strftime('%Y%m%d%H%M%S%f')}"
+    due_date = (generated_at + timedelta(days=settings.sales_order_payment_terms_days)).date()
+    document_number = f"SO-{opportunity_id}-{generated_at.strftime('%Y%m%d%H%M%S%f')}"
     return _generate_document(
         opportunity_id=opportunity_id,
         generated_by=generated_by,
-        document_type="invoice",
+        document_type="sales_order",
         document_number=document_number,
         generated_at=generated_at,
         extra_context={
-            "heading": "Sales Invoice",
-            "document_label": "Invoice Number",
-            "document_date_label": "Invoice Date",
+            "heading": "Sales Order",
+            "document_label": "Sales Order Number",
+            "document_date_label": "Order Date",
             "secondary_date_label": "Due Date",
             "secondary_date": due_date,
-            "payment_terms_text": settings.invoice_payment_terms_text,
+            "payment_terms_text": settings.sales_order_payment_terms_text,
         },
         template_name="documents/invoice.html",
     )

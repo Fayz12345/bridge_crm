@@ -1,9 +1,9 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import func, insert, or_, select, update
+from sqlalchemy import delete, func, insert, or_, select, update
 
 from bridge_crm.db.engine import get_connection
-from bridge_crm.db.schema import crm_leads, crm_users
+from bridge_crm.db.schema import crm_leads, crm_opportunities, crm_users
 
 
 VALID_LEAD_STATUSES = {"new", "contacted", "qualified", "unqualified", "converted"}
@@ -129,3 +129,15 @@ def lead_status_counts() -> dict[str, int]:
         for row in rows:
             counts[row.status] = int(row.count)
     return counts
+
+
+def delete_lead(lead_id: int) -> None:
+    with get_connection() as connection:
+        connection.execute(
+            update(crm_opportunities)
+            .where(crm_opportunities.c.lead_id == lead_id)
+            .values(lead_id=None)
+        )
+        connection.execute(
+            delete(crm_leads).where(crm_leads.c.id == lead_id)
+        )

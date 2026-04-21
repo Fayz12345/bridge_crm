@@ -1,9 +1,16 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import func, insert, or_, select, update
+from sqlalchemy import delete, func, insert, or_, select, update
 
 from bridge_crm.db.engine import get_connection
-from bridge_crm.db.schema import crm_accounts, crm_contacts, crm_users
+from bridge_crm.db.schema import (
+    crm_accounts,
+    crm_contacts,
+    crm_leads,
+    crm_opportunities,
+    crm_opportunity_lines,
+    crm_users,
+)
 
 
 def _clean(value):
@@ -257,3 +264,42 @@ def update_contact_for_account(account_id: int, contact_id: int, payload: dict) 
             _demote_other_primary_contacts(connection, account_id, contact_id)
 
         _sync_account_primary_contact(connection, account_id)
+
+
+def delete_account(account_id: int) -> None:
+    with get_connection() as connection:
+        opp_ids = [
+            row[0]
+            for row in connection.execute(
+                select(crm_opportunities.c.id).where(
+                    crm_opportunities.c.account_id == account_id
+                )
+            ).all()
+        ]
+        if opp_ids:
+            connection.execute(
+                delete(crm_opportunity_lines).where(
+                    crm_opportunity_lines.c.opportunity_id.in_(opp_ids)
+                )
+            )
+            connection.execute(
+                update(crm_leads)
+                .where(crm_leads.c.converted_opportunity_id.in_(opp_ids))
+                .values(converted_opportunity_id=None)
+            )
+            connection.execute(
+                delete(crm_opportunities).where(
+                    crm_opportunities.c.account_id == account_id
+                )
+            )
+        connection.execute(
+            update(crm_leads)
+            .where(crm_leads.c.converted_account_id == account_id)
+            .values(converted_account_id=None)
+        )
+        connection.execute(
+            delete(crm_contacts).where(crm_contacts.c.account_id == account_id)
+        )
+        connection.execute(
+            delete(crm_accounts).where(crm_accounts.c.id == account_id)
+        )

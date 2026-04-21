@@ -1,7 +1,7 @@
 from datetime import date, datetime, timezone
 from decimal import Decimal
 
-from sqlalchemy import func, insert, select, update
+from sqlalchemy import delete, func, insert, select, update
 
 from bridge_crm.db.engine import get_connection
 from bridge_crm.db.schema import (
@@ -279,4 +279,61 @@ def _recalculate_opportunity_amount(opportunity_id: int) -> None:
             update(crm_opportunities)
             .where(crm_opportunities.c.id == opportunity_id)
             .values(amount=total, updated_at=datetime.now(timezone.utc))
+        )
+
+
+def get_opportunity_line(opportunity_id: int, line_id: int) -> dict | None:
+    statement = select(crm_opportunity_lines).where(
+        crm_opportunity_lines.c.id == line_id,
+        crm_opportunity_lines.c.opportunity_id == opportunity_id,
+    )
+    with get_connection() as connection:
+        row = connection.execute(statement).mappings().first()
+    return dict(row) if row else None
+
+
+def update_opportunity_line(opportunity_id: int, line_id: int, payload: dict) -> None:
+    clean = {
+        "brand": payload["brand"],
+        "model": payload["model"],
+        "grade": payload.get("grade"),
+        "category": payload.get("category"),
+        "storage": payload.get("storage"),
+        "quantity": int(payload["quantity"]),
+        "unit_price": _normalize_decimal(payload["unit_price"]),
+        "notes": payload.get("notes"),
+        "updated_at": datetime.now(timezone.utc),
+    }
+    statement = (
+        update(crm_opportunity_lines)
+        .where(
+            crm_opportunity_lines.c.id == line_id,
+            crm_opportunity_lines.c.opportunity_id == opportunity_id,
+        )
+        .values(**clean)
+    )
+    with get_connection() as connection:
+        connection.execute(statement)
+    _recalculate_opportunity_amount(opportunity_id)
+
+
+def delete_opportunity_line(opportunity_id: int, line_id: int) -> None:
+    statement = delete(crm_opportunity_lines).where(
+        crm_opportunity_lines.c.id == line_id,
+        crm_opportunity_lines.c.opportunity_id == opportunity_id,
+    )
+    with get_connection() as connection:
+        connection.execute(statement)
+    _recalculate_opportunity_amount(opportunity_id)
+
+
+def delete_opportunity(opportunity_id: int) -> None:
+    with get_connection() as connection:
+        connection.execute(
+            delete(crm_opportunity_lines).where(
+                crm_opportunity_lines.c.opportunity_id == opportunity_id
+            )
+        )
+        connection.execute(
+            delete(crm_opportunities).where(crm_opportunities.c.id == opportunity_id)
         )
