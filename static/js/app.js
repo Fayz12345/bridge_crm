@@ -8,20 +8,40 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-  var whatsappBtn = document.getElementById("whatsapp-send-btn");
-  if (whatsappBtn) {
-    whatsappBtn.addEventListener("click", function () {
-      var phone = document.getElementById("whatsapp_phone").value.trim().replace(/[\s\-()]/g, "");
+  document.querySelectorAll("[data-select-all]").forEach((toggle) => {
+    toggle.addEventListener("change", () => {
+      const group = toggle.getAttribute("data-select-all");
+      if (!group) return;
+      document
+        .querySelectorAll('[data-checkbox-group="' + group + '"]')
+        .forEach((checkbox) => {
+          checkbox.checked = toggle.checked;
+        });
+    });
+  });
+
+  function bindWhatsappButton(config) {
+    config.button.addEventListener("click", function () {
+      var phoneInput = document.getElementById(config.phoneInputId);
+      var subjectInput = document.getElementById(config.subjectId);
+      var bodyInput = document.getElementById(config.bodyId);
+      var totalInput = document.getElementById(config.totalId);
+      var quoteRows = document.querySelectorAll(config.rowsSelector);
+      var currency = config.currency || "$";
+
+      if (!phoneInput || !subjectInput || !bodyInput) {
+        return;
+      }
+
+      var phone = phoneInput.value.trim().replace(/[\s\-()]/g, "");
       if (!phone) {
         alert("Please enter a WhatsApp phone number.");
         return;
       }
       if (!phone.startsWith("+")) phone = "+" + phone;
 
-      var subject = document.getElementById("subject").value.trim();
-      var body = document.getElementById("body_text").value.trim();
-
-      var quoteRows = document.querySelectorAll("#whatsapp-quote-data tr");
+      var subject = subjectInput.value.trim();
+      var body = bodyInput.value.trim();
       var quoteLines = [];
       quoteRows.forEach(function (row) {
         var item = row.dataset.item;
@@ -32,7 +52,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (item) {
           var line = "• " + item;
           if (spec && spec !== "— · —") line += " (" + spec + ")";
-          line += " — Qty: " + qty + " × $" + unit + " = *$" + total + "*";
+          line += " — Qty: " + qty + " × " + currency + " " + unit + " = *" + currency + " " + total + "*";
           quoteLines.push(line);
         }
       });
@@ -42,15 +62,39 @@ document.addEventListener("DOMContentLoaded", () => {
       if (body) lines.push(body);
 
       if (quoteLines.length > 0) {
-        var grandTotal = document.getElementById("whatsapp-quote-total");
         var quoteBlock = "*Quote:*\n" + quoteLines.join("\n");
-        if (grandTotal && grandTotal.value) quoteBlock += "\n\n*Total: $" + grandTotal.value + "*";
+        if (totalInput && totalInput.value) quoteBlock += "\n\n*Total: " + currency + " " + totalInput.value + "*";
         lines.push(quoteBlock);
       }
 
       var message = lines.join("\n\n");
       var url = "https://wa.me/" + encodeURIComponent(phone.replace("+", "")) + "?text=" + encodeURIComponent(message);
       window.open(url, "_blank");
+    });
+  }
+
+  document.querySelectorAll(".js-whatsapp-send").forEach(function (button) {
+    bindWhatsappButton({
+      button: button,
+      phoneInputId: button.dataset.phoneInputId,
+      subjectId: button.dataset.subjectId,
+      bodyId: button.dataset.bodyId,
+      rowsSelector: button.dataset.rowsSelector,
+      totalId: button.dataset.totalId,
+      currency: button.dataset.currency || "$",
+    });
+  });
+
+  var whatsappBtn = document.getElementById("whatsapp-send-btn");
+  if (whatsappBtn) {
+    bindWhatsappButton({
+      button: whatsappBtn,
+      phoneInputId: "whatsapp_phone",
+      subjectId: "subject",
+      bodyId: "body_text",
+      rowsSelector: "#whatsapp-quote-data tr",
+      totalId: "whatsapp-quote-total",
+      currency: "$",
     });
   }
 

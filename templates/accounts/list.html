@@ -14,7 +14,7 @@
 
 <div class="crm-card mb-3">
   <div class="card-body">
-    <form class="row g-2 align-items-end" method="get">
+    <form class="row g-3 align-items-end" method="get">
       <div class="col-12 col-lg-6">
         <label class="form-label" for="q">Search accounts</label>
         <div class="input-group">
@@ -22,10 +22,35 @@
           <input class="form-control border-start-0" id="q" name="q" value="{{ search_term }}" placeholder="Company, contact, email, ERP client ID">
         </div>
       </div>
+      <div class="col-12 col-md-4 col-lg-2">
+        <label class="form-label" for="owner_id">Owner</label>
+        <select class="form-select" id="owner_id" name="owner_id">
+          <option value="">All owners</option>
+          {% for owner in owners %}
+          <option value="{{ owner.id }}" {% if owner_id == owner.id %}selected{% endif %}>{{ owner.full_name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-12 col-md-4 col-lg-2">
+        <label class="form-label" for="product_interest_ids">Products of Interest</label>
+        <select class="form-select" id="product_interest_ids" name="product_interest_ids" multiple size="4">
+          {% for option in product_interest_options %}
+          <option value="{{ option.id }}" {% if option.id in selected_product_interest_ids %}selected{% endif %}>{{ option.display_name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-12 col-md-4 col-lg-2">
+        <label class="form-label" for="tag_ids">Tags</label>
+        <select class="form-select" id="tag_ids" name="tag_ids" multiple size="4">
+          {% for tag in tag_options %}
+          <option value="{{ tag.id }}" {% if tag.id in selected_tag_ids %}selected{% endif %}>{{ tag.tag_name }}</option>
+          {% endfor %}
+        </select>
+      </div>
       <div class="col-auto">
         <button class="btn btn-outline-primary" type="submit">Search</button>
       </div>
-      {% if search_term %}
+      {% if search_term or owner_id or selected_product_interest_ids or selected_tag_ids %}
       <div class="col-auto">
         <a class="btn btn-outline-secondary" href="{{ url_for('accounts.list_view') }}">Clear</a>
       </div>
@@ -34,11 +59,34 @@
   </div>
 </div>
 
-<div class="crm-card">
+<form method="post">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="return_to" value="{{ return_to }}">
+  <div class="crm-card mb-3">
+    <div class="card-body d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+      <div>
+        <h2 class="h5 mb-1">Bulk Outreach</h2>
+        <p class="text-body-secondary mb-0">Select accounts from this page to send a bulk email or prepare WhatsApp messages.</p>
+      </div>
+      <div class="d-flex flex-wrap gap-2">
+        <button class="btn btn-outline-primary" type="submit" formaction="{{ url_for('accounts.bulk_email_view') }}">
+          <span class="material-symbols-outlined">mail</span> Bulk Email
+        </button>
+        <button class="btn btn-outline-success" type="submit" formaction="{{ url_for('accounts.bulk_whatsapp_view') }}">
+          <span class="material-symbols-outlined">chat</span> Bulk WhatsApp
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="crm-card">
   <div class="table-responsive">
     <table class="table table-hover align-middle mb-0">
       <thead>
         <tr>
+          <th style="width:48px">
+            <input class="form-check-input" type="checkbox" data-select-all="accounts-selection">
+          </th>
           <th>Company</th>
           <th>Primary Contact</th>
           <th>Email</th>
@@ -50,9 +98,26 @@
         {% for account in accounts %}
         <tr>
           <td>
+            <input class="form-check-input" type="checkbox" name="selected_ids" value="{{ account.id }}" data-checkbox-group="accounts-selection">
+          </td>
+          <td>
             <a class="text-decoration-none fw-semibold" href="{{ url_for('accounts.detail_view', account_id=account.id) }}">{{ account.company_name }}</a>
             {% if account.industry %}
             <div class="small text-body-secondary">{{ account.industry }}</div>
+            {% endif %}
+            {% if account.product_interests %}
+            <div class="mt-2">
+              {% for item in account.product_interests %}
+              <span class="badge text-bg-light me-1 mb-1">{{ item.display_name }}</span>
+              {% endfor %}
+            </div>
+            {% endif %}
+            {% if account.tags %}
+            <div class="small text-body-secondary mt-1">
+              {% for tag in account.tags %}
+              <span class="me-2">#{{ tag.tag_name }}</span>
+              {% endfor %}
+            </div>
             {% endif %}
           </td>
           <td>{{ account.contact_name or "—" }}</td>
@@ -62,7 +127,7 @@
         </tr>
         {% else %}
         <tr>
-          <td colspan="5" class="crm-empty-state">
+          <td colspan="6" class="crm-empty-state">
             <span class="material-symbols-outlined">business</span>
             No accounts found.
           </td>
@@ -72,4 +137,5 @@
     </table>
   </div>
 </div>
+</form>
 {% endblock %}

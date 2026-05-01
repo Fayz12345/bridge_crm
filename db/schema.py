@@ -118,8 +118,102 @@ crm_leads = Table(
     ),
 )
 
+crm_product_interest_options = Table(
+    "crm_product_interest_options",
+    metadata,
+    Column("id", Integer, primary_key=True),
+    Column("option_key", String(64), nullable=False, unique=True),
+    Column("display_name", String(120), nullable=False),
+    Column("display_order", Integer, nullable=False, server_default="0"),
+    Column("is_active", Boolean, nullable=False, server_default="true"),
+)
+
+crm_account_product_interests = Table(
+    "crm_account_product_interests",
+    metadata,
+    Column(
+        "account_id",
+        ForeignKey("crm_accounts.id", ondelete="CASCADE"),
+        nullable=False,
+    ),
+    Column(
+        "interest_option_id",
+        ForeignKey("crm_product_interest_options.id", ondelete="CASCADE"),
+        nullable=False,
+    ),
+    UniqueConstraint(
+        "account_id",
+        "interest_option_id",
+        name="uq_crm_account_product_interests_account_option",
+    ),
+)
+
+crm_lead_product_interests = Table(
+    "crm_lead_product_interests",
+    metadata,
+    Column(
+        "lead_id",
+        ForeignKey("crm_leads.id", ondelete="CASCADE"),
+        nullable=False,
+    ),
+    Column(
+        "interest_option_id",
+        ForeignKey("crm_product_interest_options.id", ondelete="CASCADE"),
+        nullable=False,
+    ),
+    UniqueConstraint(
+        "lead_id",
+        "interest_option_id",
+        name="uq_crm_lead_product_interests_lead_option",
+    ),
+)
+
+crm_tags = Table(
+    "crm_tags",
+    metadata,
+    Column("id", Integer, primary_key=True),
+    Column("tag_key", String(80), nullable=False, unique=True),
+    Column("tag_name", String(80), nullable=False),
+    Column("created_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
+)
+
+crm_account_tags = Table(
+    "crm_account_tags",
+    metadata,
+    Column(
+        "account_id",
+        ForeignKey("crm_accounts.id", ondelete="CASCADE"),
+        nullable=False,
+    ),
+    Column("tag_id", ForeignKey("crm_tags.id", ondelete="CASCADE"), nullable=False),
+    UniqueConstraint("account_id", "tag_id", name="uq_crm_account_tags_account_tag"),
+)
+
+crm_lead_tags = Table(
+    "crm_lead_tags",
+    metadata,
+    Column(
+        "lead_id",
+        ForeignKey("crm_leads.id", ondelete="CASCADE"),
+        nullable=False,
+    ),
+    Column("tag_id", ForeignKey("crm_tags.id", ondelete="CASCADE"), nullable=False),
+    UniqueConstraint("lead_id", "tag_id", name="uq_crm_lead_tags_lead_tag"),
+)
+
 crm_pipeline_stages = Table(
     "crm_pipeline_stages",
+    metadata,
+    Column("id", Integer, primary_key=True),
+    Column("stage_key", String(30), nullable=False, unique=True),
+    Column("display_name", String(60), nullable=False),
+    Column("display_order", Integer, nullable=False),
+    Column("default_probability", Integer, nullable=False),
+    Column("is_active", Boolean, nullable=False, server_default="true"),
+)
+
+crm_purchase_stages = Table(
+    "crm_purchase_stages",
     metadata,
     Column("id", Integer, primary_key=True),
     Column("stage_key", String(30), nullable=False, unique=True),
@@ -139,6 +233,7 @@ crm_opportunities = Table(
     Column("stage", String(30), nullable=False, server_default="prospecting"),
     Column("amount", Numeric(14, 2)),
     Column("currency", String(3), nullable=False, server_default="CAD"),
+    Column("conversion_rate_to_cad", Numeric(12, 6), nullable=False, server_default="1"),
     Column("probability", Integer, nullable=False, server_default="10"),
     Column("expected_close_date", Date),
     Column("close_date", Date),
@@ -151,8 +246,35 @@ crm_opportunities = Table(
     Column("created_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
     Column("updated_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
     CheckConstraint(
-        "stage IN ('prospecting', 'qualification', 'proposal', 'negotiation', 'closed_won', 'closed_lost')",
+        "stage IN ('prospecting', 'negotiation', 'closed_won', 'closed_lost')",
         name="opportunity_stage",
+    ),
+)
+
+crm_purchases = Table(
+    "crm_purchases",
+    metadata,
+    Column("id", Integer, primary_key=True),
+    Column("title", String(255), nullable=False),
+    Column("account_id", ForeignKey("crm_accounts.id"), nullable=False),
+    Column("contact_id", ForeignKey("crm_contacts.id")),
+    Column("stage", String(30), nullable=False, server_default="prospecting"),
+    Column("estimated_total", Numeric(14, 2)),
+    Column("currency", String(3), nullable=False, server_default="CAD"),
+    Column("conversion_rate_to_cad", Numeric(12, 6), nullable=False, server_default="1"),
+    Column("expected_delivery_date", Date),
+    Column("close_date", Date),
+    Column("close_reason", Text),
+    Column("supplier_quote_number", String(120)),
+    Column("owner_id", ForeignKey("crm_users.id")),
+    Column("notes", Text),
+    Column("custom_fields", JSONB().with_variant(JSON(), "sqlite")),
+    Column("created_by", ForeignKey("crm_users.id")),
+    Column("created_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
+    Column("updated_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
+    CheckConstraint(
+        "stage IN ('prospecting', 'negotiation', 'closed_won', 'closed_lost')",
+        name="purchase_stage",
     ),
 )
 
@@ -200,7 +322,7 @@ crm_custom_fields = Table(
     Column("updated_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
     UniqueConstraint("object_type", "field_key", name="uq_crm_custom_fields_object_type_field_key"),
     CheckConstraint(
-        "object_type IN ('account', 'lead', 'opportunity', 'product')",
+        "object_type IN ('account', 'lead', 'opportunity', 'purchase', 'product')",
         name="custom_field_object_type",
     ),
     CheckConstraint(
@@ -242,6 +364,32 @@ crm_product_sync_log = Table(
     Column("status", String(20), nullable=False, server_default="running"),
     Column("error_message", Text),
     CheckConstraint("status IN ('running', 'completed', 'failed')", name="sync_status"),
+)
+
+crm_purchase_lines = Table(
+    "crm_purchase_lines",
+    metadata,
+    Column("id", Integer, primary_key=True),
+    Column(
+        "purchase_id",
+        ForeignKey("crm_purchases.id", ondelete="CASCADE"),
+        nullable=False,
+    ),
+    Column("brand", String(50), nullable=False),
+    Column("model", String(50), nullable=False),
+    Column("grade", String(4)),
+    Column("category", String(50)),
+    Column("storage", String(10)),
+    Column("quantity", Integer, nullable=False),
+    Column("unit_cost", Numeric(11, 2), nullable=False),
+    Column(
+        "line_total",
+        Numeric(14, 2),
+        Computed("quantity * unit_cost", persisted=True),
+    ),
+    Column("notes", Text),
+    Column("created_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
+    Column("updated_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
 )
 
 crm_opportunity_lines = Table(
@@ -313,7 +461,7 @@ crm_emails = Table(
     Column("created_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
     CheckConstraint("direction IN ('outbound', 'inbound')", name="email_direction"),
     CheckConstraint(
-        "related_type IN ('lead', 'opportunity', 'account')",
+        "related_type IN ('lead', 'opportunity', 'purchase', 'account')",
         name="email_related_type",
     ),
     CheckConstraint("status IN ('draft', 'sent', 'failed')", name="email_status"),
@@ -340,7 +488,7 @@ crm_whatsapp_messages = Table(
         "direction IN ('outbound', 'inbound')", name="whatsapp_direction"
     ),
     CheckConstraint(
-        "related_type IN ('lead', 'opportunity', 'account')",
+        "related_type IN ('lead', 'opportunity', 'purchase', 'account')",
         name="whatsapp_related_type",
     ),
     CheckConstraint(
@@ -379,6 +527,22 @@ crm_login_attempts = Table(
     Column("attempted_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
 )
 
+crm_password_reset_tokens = Table(
+    "crm_password_reset_tokens",
+    metadata,
+    Column("id", Integer, primary_key=True),
+    Column(
+        "user_id",
+        ForeignKey("crm_users.id", ondelete="CASCADE"),
+        nullable=False,
+    ),
+    Column("token_hash", String(64), nullable=False, unique=True),
+    Column("expires_at", DateTime(timezone=True), nullable=False),
+    Column("used_at", DateTime(timezone=True)),
+    Column("requested_by", ForeignKey("crm_users.id")),
+    Column("created_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
+)
+
 crm_rate_limits = Table(
     "crm_rate_limits",
     metadata,
@@ -393,13 +557,43 @@ Index("ix_crm_accounts_owner_id", crm_accounts.c.owner_id)
 Index("ix_crm_contacts_account_id", crm_contacts.c.account_id)
 Index("ix_crm_leads_status", crm_leads.c.status)
 Index("ix_crm_leads_owner_id", crm_leads.c.owner_id)
+Index(
+    "ix_crm_product_interest_options_active_order",
+    crm_product_interest_options.c.is_active,
+    crm_product_interest_options.c.display_order,
+)
+Index(
+    "ix_crm_account_product_interests_account",
+    crm_account_product_interests.c.account_id,
+)
+Index(
+    "ix_crm_account_product_interests_option",
+    crm_account_product_interests.c.interest_option_id,
+)
+Index(
+    "ix_crm_lead_product_interests_lead",
+    crm_lead_product_interests.c.lead_id,
+)
+Index(
+    "ix_crm_lead_product_interests_option",
+    crm_lead_product_interests.c.interest_option_id,
+)
+Index("ix_crm_tags_tag_name", crm_tags.c.tag_name)
+Index("ix_crm_account_tags_account", crm_account_tags.c.account_id)
+Index("ix_crm_account_tags_tag", crm_account_tags.c.tag_id)
+Index("ix_crm_lead_tags_lead", crm_lead_tags.c.lead_id)
+Index("ix_crm_lead_tags_tag", crm_lead_tags.c.tag_id)
 Index("ix_crm_opportunities_stage", crm_opportunities.c.stage)
 Index("ix_crm_opportunities_owner_id", crm_opportunities.c.owner_id)
+Index("ix_crm_purchases_stage", crm_purchases.c.stage)
+Index("ix_crm_purchases_owner_id", crm_purchases.c.owner_id)
 Index("ix_crm_products_model_name", crm_products.c.model_name)
 Index("ix_crm_products_brand_name", crm_products.c.brand_name)
 Index("ix_crm_custom_fields_object_type", crm_custom_fields.c.object_type)
+Index("ix_crm_purchase_lines_purchase", crm_purchase_lines.c.purchase_id)
 Index("ix_crm_documents_opportunity", crm_documents.c.opportunity_id)
 Index("ix_crm_activities_related", crm_activities.c.related_type, crm_activities.c.related_id)
 Index("ix_crm_notifications_user_read", crm_notifications.c.user_id, crm_notifications.c.is_read)
 Index("ix_crm_login_attempts_ip_address", crm_login_attempts.c.ip_address)
+Index("ix_crm_password_reset_tokens_user_id", crm_password_reset_tokens.c.user_id)
 Index("ix_crm_rate_limits_lookup", crm_rate_limits.c.endpoint, crm_rate_limits.c.ip_address)

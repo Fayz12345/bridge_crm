@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block title %}Bulk WhatsApp | {{ config.APP_NAME }}{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
+  <div>
+    <p class="text-uppercase small fw-semibold text-body-secondary mb-1">Bulk WhatsApp</p>
+    <h1 class="h3 mb-1">{{ entity_label }}</h1>
+    <p class="text-body-secondary mb-0">Prepare one message and open individual WhatsApp chats for the selected records.</p>
+  </div>
+  <a class="btn btn-outline-secondary" href="{{ return_to }}"><span class="material-symbols-outlined">arrow_back</span> Back to {{ entity_label }}</a>
+</div>
+
+<div class="alert alert-info">
+  This is a compose workflow. The CRM prepares WhatsApp links, but it does not automatically send messages server-side.
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="crm-card">
+      <div class="card-body">
+        <form method="post" action="{{ url_for(compose_endpoint) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="return_to" value="{{ return_to }}">
+          {% for record in records %}
+          <input type="hidden" name="selected_ids" value="{{ record.id }}">
+          {% endfor %}
+
+          <div class="mb-3">
+            <label class="form-label" for="body_text">WhatsApp Message</label>
+            <textarea class="form-control" id="body_text" name="body_text" rows="12">{{ body_text or '' }}</textarea>
+            <div class="form-text">Update the message and click Generate Links to refresh the chat links below.</div>
+          </div>
+
+          <div class="d-flex flex-wrap gap-2">
+            <button class="btn btn-primary" type="submit"><span class="material-symbols-outlined">link</span> Generate Links</button>
+            <a class="btn btn-outline-secondary" href="{{ return_to }}">Cancel</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-5">
+    <div class="crm-card">
+      <div class="card-body">
+        <h2 class="h5 mb-3">Recipients</h2>
+        <p class="text-body-secondary">Ready to open: {{ available_count }} / {{ records|length }}</p>
+        {% for record in records %}
+        <div class="border rounded-3 p-3 mb-2">
+          <div class="d-flex justify-content-between gap-2">
+            <div>
+              <div class="fw-semibold">{{ record.display_name }}</div>
+              {% if record.subtitle %}
+              <div class="small text-body-secondary">{{ record.subtitle }}</div>
+              {% endif %}
+            </div>
+            {% if record.whatsapp_number %}
+            <a
+              class="btn btn-sm btn-outline-success"
+              href="https://wa.me/{{ record.whatsapp_number.replace('+', '') }}?text={{ (body_text or '')|urlencode }}"
+              target="_blank"
+              rel="noopener">
+              Open Chat
+            </a>
+            {% else %}
+            <span class="badge text-bg-warning">Missing Number</span>
+            {% endif %}
+          </div>
+          <div class="small mt-2">{{ record.whatsapp_number or "No WhatsApp number on file" }}</div>
+          {% if record.product_interests %}
+          <div class="mt-2">
+            {% for item in record.product_interests %}
+            <span class="badge text-bg-light me-1 mb-1">{{ item.display_name }}</span>
+            {% endfor %}
+          </div>
+          {% endif %}
+          {% if record.tags %}
+          <div class="small text-body-secondary mt-1">
+            {% for tag in record.tags %}
+            <span class="me-2">#{{ tag.tag_name }}</span>
+            {% endfor %}
+          </div>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

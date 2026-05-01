@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block title %}Bulk Email | {{ config.APP_NAME }}{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
+  <div>
+    <p class="text-uppercase small fw-semibold text-body-secondary mb-1">Bulk Email</p>
+    <h1 class="h3 mb-1">{{ entity_label }}</h1>
+    <p class="text-body-secondary mb-0">Compose one message and send it individually to the selected records.</p>
+  </div>
+  <a class="btn btn-outline-secondary" href="{{ return_to }}"><span class="material-symbols-outlined">arrow_back</span> Back to {{ entity_label }}</a>
+</div>
+
+{% if not smtp_ready %}
+<div class="alert alert-warning">
+  Email delivery is not configured. You can review recipients here, but sends will fail until email settings are enabled.
+</div>
+{% endif %}
+
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="crm-card">
+      <div class="card-body">
+        <form method="post" action="{{ url_for(send_endpoint) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="return_to" value="{{ return_to }}">
+          {% for record in records %}
+          <input type="hidden" name="selected_ids" value="{{ record.id }}">
+          {% endfor %}
+
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label" for="cc_address">CC</label>
+              <input class="form-control" id="cc_address" name="cc_address" type="email" value="{{ cc_address or '' }}" placeholder="optional@bridge-wireless.com">
+            </div>
+            <div class="col-12">
+              <label class="form-label" for="subject">Subject</label>
+              <input class="form-control" id="subject" name="subject" value="{{ subject or '' }}" required>
+            </div>
+            <div class="col-12">
+              <label class="form-label" for="body_text">Message</label>
+              <textarea class="form-control" id="body_text" name="body_text" rows="12" required>{{ body_text or '' }}</textarea>
+            </div>
+          </div>
+
+          <div class="d-flex flex-wrap gap-2 mt-4">
+            <button class="btn btn-primary" type="submit"><span class="material-symbols-outlined">send</span> Send Bulk Email</button>
+            <a class="btn btn-outline-secondary" href="{{ return_to }}">Cancel</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-5">
+    <div class="crm-card">
+      <div class="card-body">
+        <h2 class="h5 mb-3">Recipients</h2>
+        <p class="text-body-secondary">Ready to send: {{ available_count }} / {{ records|length }}</p>
+        {% for record in records %}
+        <div class="border rounded-3 p-3 mb-2">
+          <div class="d-flex justify-content-between gap-2">
+            <div>
+              <div class="fw-semibold">{{ record.display_name }}</div>
+              {% if record.subtitle %}
+              <div class="small text-body-secondary">{{ record.subtitle }}</div>
+              {% endif %}
+            </div>
+            {% if record.email %}
+            <span class="badge text-bg-success">Ready</span>
+            {% else %}
+            <span class="badge text-bg-warning">Missing Email</span>
+            {% endif %}
+          </div>
+          <div class="small mt-2">{{ record.email or "No email on file" }}</div>
+          {% if record.product_interests %}
+          <div class="mt-2">
+            {% for item in record.product_interests %}
+            <span class="badge text-bg-light me-1 mb-1">{{ item.display_name }}</span>
+            {% endfor %}
+          </div>
+          {% endif %}
+          {% if record.tags %}
+          <div class="small text-body-secondary mt-1">
+            {% for tag in record.tags %}
+            <span class="me-2">#{{ tag.tag_name }}</span>
+            {% endfor %}
+          </div>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

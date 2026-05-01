@@ -53,6 +53,30 @@
             <div class="crm-field-label">Owner</div>
             <div>{{ lead.owner_name or "Unassigned" }}</div>
           </div>
+          <div class="col-md-6">
+            <div class="crm-field-label">Products of Interest</div>
+            <div>
+              {% if lead.product_interests %}
+                {% for item in lead.product_interests %}
+                <span class="badge text-bg-light me-1 mb-1">{{ item.display_name }}</span>
+                {% endfor %}
+              {% else %}
+                —
+              {% endif %}
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="crm-field-label">Tags</div>
+            <div>
+              {% if lead.tags %}
+                {% for tag in lead.tags %}
+                <span class="badge bg-secondary-subtle text-dark me-1 mb-1">#{{ tag.tag_name }}</span>
+                {% endfor %}
+              {% else %}
+                —
+              {% endif %}
+            </div>
+          </div>
           <div class="col-12">
             <div class="crm-field-label">Interest</div>
             <div class="crm-notes">{{ lead.interest or "No interest notes yet." }}</div>

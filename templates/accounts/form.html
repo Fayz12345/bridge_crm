@@ -49,6 +49,20 @@
           <input class="form-control" id="industry" name="industry" value="{{ form_data.industry or '' }}">
         </div>
         <div class="col-md-6">
+          <label class="form-label" for="product_interest_ids">Products of Interest</label>
+          <select class="form-select" id="product_interest_ids" name="product_interest_ids" multiple size="{{ 6 if product_interest_options|length > 6 else product_interest_options|length or 4 }}">
+            {% for option in product_interest_options %}
+            <option value="{{ option.id }}" {% if option.id in selected_product_interest_ids %}selected{% endif %}>{{ option.display_name }}</option>
+            {% endfor %}
+          </select>
+          <div class="form-text">Hold Ctrl or Cmd to select multiple values.</div>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label" for="tags">Tags</label>
+          <input class="form-control" id="tags" name="tags" value="{{ tag_input_value or '' }}" placeholder="enterprise, follow-up, warm">
+          <div class="form-text">Enter multiple tags separated by commas.</div>
+        </div>
+        <div class="col-md-6">
           <label class="form-label" for="address_line_1">Address Line 1</label>
           <input class="form-control" id="address_line_1" name="address_line_1" value="{{ form_data.address_line_1 or '' }}">
         </div>

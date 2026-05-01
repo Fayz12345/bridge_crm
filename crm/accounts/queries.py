@@ -2,13 +2,20 @@ from datetime import datetime, timezone
 
 from sqlalchemy import delete, func, insert, or_, select, update
 
+from bridge_crm.crm.segments.queries import (
+    list_account_product_interests_map,
+    list_account_tags_map,
+)
 from bridge_crm.db.engine import get_connection
 from bridge_crm.db.schema import (
     crm_accounts,
+    crm_account_product_interests,
+    crm_account_tags,
     crm_contacts,
     crm_leads,
     crm_opportunities,
     crm_opportunity_lines,
+    crm_tags,
     crm_users,
 )
 
@@ -32,7 +39,57 @@ def _normalize_phone_prefix(value, phone=None):
     return value
 
 
-def list_accounts(search_term: str | None = None) -> list[dict]:
+def _attach_account_segments(accounts: list[dict]) -> list[dict]:
+    account_ids = [int(account["id"]) for account in accounts]
+    interests_map = list_account_product_interests_map(account_ids)
+    tags_map = list_account_tags_map(account_ids)
+    whatsapp_map = _list_primary_contact_whatsapp_map(account_ids)
+    for account in accounts:
+        account_id = int(account["id"])
+        account["product_interests"] = interests_map.get(account_id, [])
+        account["tags"] = tags_map.get(account_id, [])
+        account["whatsapp_number"] = whatsapp_map.get(account_id)
+    return accounts
+
+
+def _list_primary_contact_whatsapp_map(account_ids: list[int]) -> dict[int, str]:
+    if not account_ids:
+        return {}
+    statement = (
+        select(
+            crm_contacts.c.account_id,
+            crm_contacts.c.whatsapp_number,
+            crm_contacts.c.is_primary,
+            crm_contacts.c.updated_at,
+            crm_contacts.c.id,
+        )
+        .where(
+            crm_contacts.c.account_id.in_(account_ids),
+            crm_contacts.c.whatsapp_number.is_not(None),
+        )
+        .order_by(
+            crm_contacts.c.account_id,
+            crm_contacts.c.is_primary.desc(),
+            crm_contacts.c.updated_at.desc(),
+            crm_contacts.c.id.desc(),
+        )
+    )
+    result: dict[int, str] = {}
+    with get_connection() as connection:
+        rows = connection.execute(statement).mappings().all()
+    for row in rows:
+        account_id = int(row["account_id"])
+        if account_id not in result and row["whatsapp_number"]:
+            result[account_id] = row["whatsapp_number"]
+    return result
+
+
+def list_accounts(
+    search_term: str | None = None,
+    owner_id: int | None = None,
+    product_interest_ids: list[int] | None = None,
+    tag_ids: list[int] | None = None,
+) -> list[dict]:
     owner = crm_users.alias("owner")
     statement = (
         select(
@@ -42,6 +99,9 @@ def list_accounts(search_term: str | None = None) -> list[dict]:
         .select_from(crm_accounts.outerjoin(owner, crm_accounts.c.owner_id == owner.c.id))
         .order_by(func.lower(crm_accounts.c.company_name))
     )
+
+    if owner_id:
+        statement = statement.where(crm_accounts.c.owner_id == owner_id)
 
     if search_term:
         pattern = f"%{search_term.strip()}%"
@@ -54,9 +114,29 @@ def list_accounts(search_term: str | None = None) -> list[dict]:
             )
         )
 
+    if product_interest_ids:
+        statement = statement.where(
+            select(crm_account_product_interests.c.account_id)
+            .where(
+                crm_account_product_interests.c.account_id == crm_accounts.c.id,
+                crm_account_product_interests.c.interest_option_id.in_(product_interest_ids),
+            )
+            .exists()
+        )
+
+    if tag_ids:
+        statement = statement.where(
+            select(crm_account_tags.c.account_id)
+            .where(
+                crm_account_tags.c.account_id == crm_accounts.c.id,
+                crm_account_tags.c.tag_id.in_(tag_ids),
+            )
+            .exists()
+        )
+
     with get_connection() as connection:
         rows = connection.execute(statement).mappings().all()
-    return [dict(row) for row in rows]
+    return _attach_account_segments([dict(row) for row in rows])
 
 
 def get_account(account_id: int) -> dict | None:
@@ -77,7 +157,24 @@ def get_account(account_id: int) -> dict | None:
     )
     with get_connection() as connection:
         row = connection.execute(statement).mappings().first()
-    return dict(row) if row else None
+    if not row:
+        return None
+    return _attach_account_segments([dict(row)])[0]
+
+
+def get_accounts_by_ids(account_ids: list[int]) -> list[dict]:
+    if not account_ids:
+        return []
+    owner = crm_users.alias("owner")
+    statement = (
+        select(crm_accounts, owner.c.full_name.label("owner_name"))
+        .select_from(crm_accounts.outerjoin(owner, crm_accounts.c.owner_id == owner.c.id))
+        .where(crm_accounts.c.id.in_(account_ids))
+        .order_by(func.lower(crm_accounts.c.company_name), crm_accounts.c.id)
+    )
+    with get_connection() as connection:
+        rows = connection.execute(statement).mappings().all()
+    return _attach_account_segments([dict(row) for row in rows])
 
 
 def list_contacts_for_account(account_id: int) -> list[dict]:
@@ -303,3 +400,10 @@ def delete_account(account_id: int) -> None:
         connection.execute(
             delete(crm_accounts).where(crm_accounts.c.id == account_id)
         )
+
+
+def list_account_tag_options() -> list[dict]:
+    statement = select(crm_tags).order_by(func.lower(crm_tags.c.tag_name), crm_tags.c.id)
+    with get_connection() as connection:
+        rows = connection.execute(statement).mappings().all()
+    return [dict(row) for row in rows]

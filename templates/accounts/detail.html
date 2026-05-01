@@ -51,6 +51,30 @@
             <div class="crm-field-label">ERP Client ID</div>
             <div><code>{{ account.erp_client_id or "—" }}</code></div>
           </div>
+          <div class="col-md-6">
+            <div class="crm-field-label">Products of Interest</div>
+            <div>
+              {% if account.product_interests %}
+                {% for item in account.product_interests %}
+                <span class="badge text-bg-light me-1 mb-1">{{ item.display_name }}</span>
+                {% endfor %}
+              {% else %}
+                —
+              {% endif %}
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="crm-field-label">Tags</div>
+            <div>
+              {% if account.tags %}
+                {% for tag in account.tags %}
+                <span class="badge bg-secondary-subtle text-dark me-1 mb-1">#{{ tag.tag_name }}</span>
+                {% endfor %}
+              {% else %}
+                —
+              {% endif %}
+            </div>
+          </div>
           <div class="col-12">
             <div class="crm-field-label">Address</div>
             <div>
