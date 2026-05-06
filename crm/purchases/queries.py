@@ -7,14 +7,14 @@ from bridge_crm.db.engine import get_connection
 from bridge_crm.db.schema import (
     crm_accounts,
     crm_contacts,
-    crm_opportunity_lines,
-    crm_opportunities,
-    crm_pipeline_stages,
+    crm_purchase_lines,
+    crm_purchase_stages,
+    crm_purchases,
     crm_users,
 )
-from bridge_crm.crm.opportunities.constants import (
-    DEFAULT_OPPORTUNITY_CURRENCY,
-    opportunity_amount_cad_expression,
+from bridge_crm.crm.purchases.constants import (
+    DEFAULT_PURCHASE_CURRENCY,
+    purchase_total_cad_expression,
 )
 
 
@@ -30,40 +30,40 @@ def _normalize_decimal(value: str | None):
     return Decimal(value)
 
 
-def list_opportunities(stage: str | None = None) -> list[dict]:
+def list_purchases(stage: str | None = None) -> list[dict]:
     account = crm_accounts.alias("account")
     owner = crm_users.alias("owner")
     statement = (
         select(
-            crm_opportunities,
+            crm_purchases,
             account.c.company_name.label("account_name"),
-            owner.c.full_name.label("salesperson_name"),
-            opportunity_amount_cad_expression().label("amount_cad"),
+            owner.c.full_name.label("owner_name"),
+            purchase_total_cad_expression().label("estimated_total_cad"),
         )
         .select_from(
-            crm_opportunities.join(account, crm_opportunities.c.account_id == account.c.id).outerjoin(
-                owner, crm_opportunities.c.owner_id == owner.c.id
+            crm_purchases.join(account, crm_purchases.c.account_id == account.c.id).outerjoin(
+                owner, crm_purchases.c.owner_id == owner.c.id
             )
         )
-        .order_by(crm_opportunities.c.created_at.desc(), crm_opportunities.c.id.desc())
+        .order_by(crm_purchases.c.created_at.desc(), crm_purchases.c.id.desc())
     )
     if stage:
-        statement = statement.where(crm_opportunities.c.stage == stage)
+        statement = statement.where(crm_purchases.c.stage == stage)
 
     with get_connection() as connection:
         rows = connection.execute(statement).mappings().all()
     return [dict(row) for row in rows]
 
 
-def get_opportunity(opportunity_id: int) -> dict | None:
+def get_purchase(purchase_id: int) -> dict | None:
     account = crm_accounts.alias("account")
     owner = crm_users.alias("owner")
     contact = crm_contacts.alias("contact")
     statement = (
         select(
-            crm_opportunities,
+            crm_purchases,
             account.c.company_name.label("account_name"),
-            owner.c.full_name.label("salesperson_name"),
+            owner.c.full_name.label("owner_name"),
             account.c.email.label("account_email"),
             account.c.phone.label("account_phone"),
             account.c.phone_prefix.label("account_phone_prefix"),
@@ -78,98 +78,83 @@ def get_opportunity(opportunity_id: int) -> dict | None:
             contact.c.email.label("contact_email"),
             contact.c.phone.label("contact_phone"),
             contact.c.phone_prefix.label("contact_phone_prefix"),
-            opportunity_amount_cad_expression().label("amount_cad"),
+            purchase_total_cad_expression().label("estimated_total_cad"),
         )
         .select_from(
-            crm_opportunities.join(account, crm_opportunities.c.account_id == account.c.id)
-            .outerjoin(owner, crm_opportunities.c.owner_id == owner.c.id)
-            .outerjoin(contact, crm_opportunities.c.contact_id == contact.c.id)
+            crm_purchases.join(account, crm_purchases.c.account_id == account.c.id)
+            .outerjoin(owner, crm_purchases.c.owner_id == owner.c.id)
+            .outerjoin(contact, crm_purchases.c.contact_id == contact.c.id)
         )
-        .where(crm_opportunities.c.id == opportunity_id)
+        .where(crm_purchases.c.id == purchase_id)
     )
     with get_connection() as connection:
         row = connection.execute(statement).mappings().first()
     return dict(row) if row else None
 
 
-def get_opportunity_line_items(opportunity_id: int) -> list[dict]:
-    statement = (
-        select(crm_opportunity_lines)
-        .where(crm_opportunity_lines.c.opportunity_id == opportunity_id)
-        .order_by(crm_opportunity_lines.c.created_at.asc(), crm_opportunity_lines.c.id.asc())
-    )
-    with get_connection() as connection:
-        rows = connection.execute(statement).mappings().all()
-    return [dict(row) for row in rows]
-
-
-def create_opportunity(payload: dict) -> int:
+def create_purchase(payload: dict) -> int:
     clean = {
         "title": payload["title"].strip(),
         "account_id": payload["account_id"],
         "contact_id": payload.get("contact_id"),
         "stage": payload.get("stage", "prospecting"),
-        "amount": _normalize_decimal(payload.get("amount")),
-        "currency": payload.get("currency", DEFAULT_OPPORTUNITY_CURRENCY),
+        "estimated_total": _normalize_decimal(payload.get("estimated_total")),
+        "currency": payload.get("currency", DEFAULT_PURCHASE_CURRENCY),
         "conversion_rate_to_cad": _normalize_decimal(payload.get("conversion_rate_to_cad"))
         or Decimal("1"),
-        "probability": payload.get("probability", 10),
-        "expected_close_date": _normalize_date(payload.get("expected_close_date")),
+        "expected_delivery_date": _normalize_date(payload.get("expected_delivery_date")),
         "close_date": _normalize_date(payload.get("close_date")),
         "close_reason": payload.get("close_reason"),
+        "supplier_quote_number": payload.get("supplier_quote_number"),
         "owner_id": payload.get("owner_id"),
-        "lead_id": payload.get("lead_id"),
         "notes": payload.get("notes"),
         "custom_fields": payload.get("custom_fields") or {},
         "created_by": payload.get("created_by"),
     }
-    statement = insert(crm_opportunities).values(**clean).returning(crm_opportunities.c.id)
+    statement = insert(crm_purchases).values(**clean).returning(crm_purchases.c.id)
     with get_connection() as connection:
-        opportunity_id = connection.execute(statement).scalar_one()
-    return int(opportunity_id)
+        purchase_id = connection.execute(statement).scalar_one()
+    return int(purchase_id)
 
 
-def update_opportunity(opportunity_id: int, payload: dict) -> None:
+def update_purchase(purchase_id: int, payload: dict) -> None:
     clean = {
         "title": payload["title"].strip(),
         "account_id": payload["account_id"],
         "contact_id": payload.get("contact_id"),
         "stage": payload.get("stage", "prospecting"),
-        "amount": _normalize_decimal(payload.get("amount")),
-        "currency": payload.get("currency", DEFAULT_OPPORTUNITY_CURRENCY),
+        "estimated_total": _normalize_decimal(payload.get("estimated_total")),
+        "currency": payload.get("currency", DEFAULT_PURCHASE_CURRENCY),
         "conversion_rate_to_cad": _normalize_decimal(payload.get("conversion_rate_to_cad"))
         or Decimal("1"),
-        "probability": payload.get("probability", 10),
-        "expected_close_date": _normalize_date(payload.get("expected_close_date")),
+        "expected_delivery_date": _normalize_date(payload.get("expected_delivery_date")),
         "close_date": _normalize_date(payload.get("close_date")),
         "close_reason": payload.get("close_reason"),
+        "supplier_quote_number": payload.get("supplier_quote_number"),
         "owner_id": payload.get("owner_id"),
-        "lead_id": payload.get("lead_id"),
         "notes": payload.get("notes"),
         "custom_fields": payload.get("custom_fields") or {},
         "updated_at": datetime.now(timezone.utc),
     }
+    statement = update(crm_purchases).where(crm_purchases.c.id == purchase_id).values(**clean)
+    with get_connection() as connection:
+        connection.execute(statement)
+
+
+def update_purchase_stage(purchase_id: int, stage: str) -> None:
     statement = (
-        update(crm_opportunities)
-        .where(crm_opportunities.c.id == opportunity_id)
-        .values(**clean)
+        update(crm_purchases)
+        .where(crm_purchases.c.id == purchase_id)
+        .values(stage=stage, updated_at=datetime.now(timezone.utc))
     )
     with get_connection() as connection:
         connection.execute(statement)
 
 
-def update_opportunity_stage(opportunity_id: int, stage: str, probability: int) -> None:
-    statement = (
-        update(crm_opportunities)
-        .where(crm_opportunities.c.id == opportunity_id)
-        .values(
-            stage=stage,
-            probability=probability,
-            updated_at=datetime.now(timezone.utc),
-        )
-    )
+def delete_purchase(purchase_id: int) -> None:
     with get_connection() as connection:
-        connection.execute(statement)
+        connection.execute(delete(crm_purchase_lines).where(crm_purchase_lines.c.purchase_id == purchase_id))
+        connection.execute(delete(crm_purchases).where(crm_purchases.c.id == purchase_id))
 
 
 def list_accounts_for_select() -> list[dict]:
@@ -186,11 +171,7 @@ def list_contacts_for_account_select(account_id: int | None) -> list[dict]:
         return []
 
     statement = (
-        select(
-            crm_contacts.c.id,
-            crm_contacts.c.first_name,
-            crm_contacts.c.last_name,
-        )
+        select(crm_contacts.c.id, crm_contacts.c.first_name, crm_contacts.c.last_name)
         .where(crm_contacts.c.account_id == account_id)
         .order_by(crm_contacts.c.last_name, crm_contacts.c.first_name)
     )
@@ -199,111 +180,106 @@ def list_contacts_for_account_select(account_id: int | None) -> list[dict]:
     return [dict(row) for row in rows]
 
 
-def create_contact(payload: dict) -> int:
-    statement = insert(crm_contacts).values(**payload).returning(crm_contacts.c.id)
-    with get_connection() as connection:
-        contact_id = connection.execute(statement).scalar_one()
-    return int(contact_id)
-
-
-def get_pipeline_stages() -> list[dict]:
+def get_purchase_stages() -> list[dict]:
     statement = (
-        select(crm_pipeline_stages)
-        .where(crm_pipeline_stages.c.is_active.is_(True))
-        .order_by(crm_pipeline_stages.c.display_order)
+        select(crm_purchase_stages)
+        .where(crm_purchase_stages.c.is_active.is_(True))
+        .order_by(crm_purchase_stages.c.display_order)
     )
     with get_connection() as connection:
         rows = connection.execute(statement).mappings().all()
     return [dict(row) for row in rows]
 
 
-def get_pipeline_stage(stage_key: str) -> dict | None:
-    statement = select(crm_pipeline_stages).where(crm_pipeline_stages.c.stage_key == stage_key)
+def get_purchase_stage(stage_key: str) -> dict | None:
+    statement = select(crm_purchase_stages).where(crm_purchase_stages.c.stage_key == stage_key)
     with get_connection() as connection:
         row = connection.execute(statement).mappings().first()
     return dict(row) if row else None
 
 
-def upsert_pipeline_stage(payload: dict) -> int:
-    existing = get_pipeline_stage(payload["stage_key"])
+def upsert_purchase_stage(payload: dict) -> int:
+    existing = get_purchase_stage(payload["stage_key"])
     if existing:
         statement = (
-            update(crm_pipeline_stages)
-            .where(crm_pipeline_stages.c.id == existing["id"])
+            update(crm_purchase_stages)
+            .where(crm_purchase_stages.c.id == existing["id"])
             .values(
                 display_name=payload["display_name"],
                 display_order=payload["display_order"],
                 default_probability=payload["default_probability"],
                 is_active=payload["is_active"],
             )
-            .returning(crm_pipeline_stages.c.id)
+            .returning(crm_purchase_stages.c.id)
         )
     else:
-        statement = insert(crm_pipeline_stages).values(**payload).returning(crm_pipeline_stages.c.id)
+        statement = insert(crm_purchase_stages).values(**payload).returning(crm_purchase_stages.c.id)
     with get_connection() as connection:
         stage_id = connection.execute(statement).scalar_one()
     return int(stage_id)
 
 
-def opportunities_by_stage() -> list[dict]:
+def purchases_by_stage() -> list[dict]:
     account = crm_accounts.alias("account")
     statement = (
         select(
-            crm_opportunities,
+            crm_purchases,
             account.c.company_name.label("account_name"),
-            opportunity_amount_cad_expression().label("amount_cad"),
+            purchase_total_cad_expression().label("estimated_total_cad"),
         )
-        .select_from(crm_opportunities.join(account, crm_opportunities.c.account_id == account.c.id))
-        .order_by(crm_opportunities.c.stage, crm_opportunities.c.expected_close_date, crm_opportunities.c.id.desc())
+        .select_from(crm_purchases.join(account, crm_purchases.c.account_id == account.c.id))
+        .order_by(
+            crm_purchases.c.stage,
+            crm_purchases.c.expected_delivery_date,
+            crm_purchases.c.id.desc(),
+        )
     )
     with get_connection() as connection:
         rows = connection.execute(statement).mappings().all()
     return [dict(row) for row in rows]
 
 
-def create_opportunity_line(payload: dict) -> int:
+def get_purchase_line_items(purchase_id: int) -> list[dict]:
+    statement = (
+        select(crm_purchase_lines)
+        .where(crm_purchase_lines.c.purchase_id == purchase_id)
+        .order_by(crm_purchase_lines.c.created_at.asc(), crm_purchase_lines.c.id.asc())
+    )
+    with get_connection() as connection:
+        rows = connection.execute(statement).mappings().all()
+    return [dict(row) for row in rows]
+
+
+def create_purchase_line(payload: dict) -> int:
     clean = {
-        "opportunity_id": payload["opportunity_id"],
+        "purchase_id": payload["purchase_id"],
         "brand": payload["brand"],
         "model": payload["model"],
         "grade": payload.get("grade"),
         "category": payload.get("category"),
         "storage": payload.get("storage"),
         "quantity": int(payload["quantity"]),
-        "unit_price": _normalize_decimal(payload["unit_price"]),
+        "unit_cost": _normalize_decimal(payload["unit_cost"]),
         "notes": payload.get("notes"),
     }
-    statement = insert(crm_opportunity_lines).values(**clean).returning(crm_opportunity_lines.c.id)
+    statement = insert(crm_purchase_lines).values(**clean).returning(crm_purchase_lines.c.id)
     with get_connection() as connection:
         line_id = connection.execute(statement).scalar_one()
-    _recalculate_opportunity_amount(payload["opportunity_id"])
+    _recalculate_purchase_total(payload["purchase_id"])
     return int(line_id)
 
 
-def _recalculate_opportunity_amount(opportunity_id: int) -> None:
-    total_statement = select(
-        func.coalesce(func.sum(crm_opportunity_lines.c.quantity * crm_opportunity_lines.c.unit_price), 0)
-    ).where(crm_opportunity_lines.c.opportunity_id == opportunity_id)
-    with get_connection() as connection:
-        total = connection.execute(total_statement).scalar_one()
-        connection.execute(
-            update(crm_opportunities)
-            .where(crm_opportunities.c.id == opportunity_id)
-            .values(amount=total, updated_at=datetime.now(timezone.utc))
-        )
-
-
-def get_opportunity_line(opportunity_id: int, line_id: int) -> dict | None:
-    statement = select(crm_opportunity_lines).where(
-        crm_opportunity_lines.c.id == line_id,
-        crm_opportunity_lines.c.opportunity_id == opportunity_id,
+def get_purchase_line(purchase_id: int, line_id: int) -> dict | None:
+    statement = select(crm_purchase_lines).where(
+        crm_purchase_lines.c.id == line_id,
+        crm_purchase_lines.c.purchase_id == purchase_id,
     )
     with get_connection() as connection:
         row = connection.execute(statement).mappings().first()
     return dict(row) if row else None
 
 
-def update_opportunity_line(opportunity_id: int, line_id: int, payload: dict) -> None:
+def update_purchase_line(purchase_id: int, line_id: int, payload: dict) -> None:
     clean = {
         "brand": payload["brand"],
         "model": payload["model"],
@@ -311,40 +287,41 @@ def update_opportunity_line(opportunity_id: int, line_id: int, payload: dict) ->
         "category": payload.get("category"),
         "storage": payload.get("storage"),
         "quantity": int(payload["quantity"]),
-        "unit_price": _normalize_decimal(payload["unit_price"]),
+        "unit_cost": _normalize_decimal(payload["unit_cost"]),
         "notes": payload.get("notes"),
         "updated_at": datetime.now(timezone.utc),
     }
     statement = (
-        update(crm_opportunity_lines)
+        update(crm_purchase_lines)
         .where(
-            crm_opportunity_lines.c.id == line_id,
-            crm_opportunity_lines.c.opportunity_id == opportunity_id,
+            crm_purchase_lines.c.id == line_id,
+            crm_purchase_lines.c.purchase_id == purchase_id,
         )
         .values(**clean)
     )
     with get_connection() as connection:
         connection.execute(statement)
-    _recalculate_opportunity_amount(opportunity_id)
+    _recalculate_purchase_total(purchase_id)
 
 
-def delete_opportunity_line(opportunity_id: int, line_id: int) -> None:
-    statement = delete(crm_opportunity_lines).where(
-        crm_opportunity_lines.c.id == line_id,
-        crm_opportunity_lines.c.opportunity_id == opportunity_id,
+def delete_purchase_line(purchase_id: int, line_id: int) -> None:
+    statement = delete(crm_purchase_lines).where(
+        crm_purchase_lines.c.id == line_id,
+        crm_purchase_lines.c.purchase_id == purchase_id,
     )
     with get_connection() as connection:
         connection.execute(statement)
-    _recalculate_opportunity_amount(opportunity_id)
+    _recalculate_purchase_total(purchase_id)
 
 
-def delete_opportunity(opportunity_id: int) -> None:
+def _recalculate_purchase_total(purchase_id: int) -> None:
+    total_statement = select(
+        func.coalesce(func.sum(crm_purchase_lines.c.quantity * crm_purchase_lines.c.unit_cost), 0)
+    ).where(crm_purchase_lines.c.purchase_id == purchase_id)
     with get_connection() as connection:
+        total = connection.execute(total_statement).scalar_one()
         connection.execute(
-            delete(crm_opportunity_lines).where(
-                crm_opportunity_lines.c.opportunity_id == opportunity_id
-            )
-        )
-        connection.execute(
-            delete(crm_opportunities).where(crm_opportunities.c.id == opportunity_id)
+            update(crm_purchases)
+            .where(crm_purchases.c.id == purchase_id)
+            .values(estimated_total=total, updated_at=datetime.now(timezone.utc))
         )

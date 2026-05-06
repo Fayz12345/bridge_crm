@@ -35,7 +35,7 @@
         <span class="material-symbols-outlined" style="font-size:36px;color:var(--crm-teal);opacity:0.7">payments</span>
         <div>
           <p class="small text-uppercase text-body-secondary fw-semibold mb-1">My Pipeline Value</p>
-          <div class="display-6">${{ "{:,.0f}".format(my_pipeline.value) }}</div>
+          <div class="display-6">CAD ${{ "{:,.0f}".format(my_pipeline.value) }}</div>
         </div>
       </div>
     </div>
@@ -63,7 +63,13 @@
           <div class="d-flex justify-content-between align-items-center">
             <div>
               <div class="fw-semibold" style="color:var(--crm-navy-light)">{{ opp.title }}</div>
-              <div class="small text-body-secondary">{{ opp.account_name }}{% if opp.amount %} · ${{ "{:,.0f}".format(opp.amount) }}{% endif %}</div>
+              <div class="small text-body-secondary">
+                {{ opp.account_name }}
+                {% if opp.amount %}
+                · {{ opp.currency }} {{ "{:,.0f}".format(opp.amount) }}
+                · CAD {{ "{:,.0f}".format(opp.amount_cad) }}
+                {% endif %}
+              </div>
             </div>
             <span class="badge" style="background:rgba(0,169,157,0.12);color:var(--crm-teal)">{{ opp.stage.replace('_', ' ') }}</span>
           </div>
@@ -125,7 +131,7 @@
         <span class="material-symbols-outlined" style="font-size:36px;color:var(--crm-teal);opacity:0.7">payments</span>
         <div>
           <p class="small text-uppercase text-body-secondary fw-semibold mb-1">Open Pipeline Value</p>
-          <div class="display-6">${{ "{:,.0f}".format(open_opportunities.value) }}</div>
+          <div class="display-6">CAD ${{ "{:,.0f}".format(open_opportunities.value) }}</div>
         </div>
       </div>
     </div>
@@ -142,7 +148,13 @@
           <div class="d-flex justify-content-between align-items-center">
             <div>
               <div class="fw-semibold" style="color:var(--crm-navy-light)">{{ opp.title }}</div>
-              <div class="small text-body-secondary">{{ opp.account_name }} · {{ opp.owner_name or "Unassigned" }}{% if opp.amount %} · ${{ "{:,.0f}".format(opp.amount) }}{% endif %}</div>
+              <div class="small text-body-secondary">
+                {{ opp.account_name }} · {{ opp.salesperson_name or "Unassigned" }}
+                {% if opp.amount %}
+                · {{ opp.currency }} {{ "{:,.0f}".format(opp.amount) }}
+                · CAD {{ "{:,.0f}".format(opp.amount_cad) }}
+                {% endif %}
+              </div>
             </div>
             <span class="badge" style="background:rgba(0,169,157,0.12);color:var(--crm-teal)">{{ opp.stage.replace('_', ' ') }}</span>
           </div>
@@ -188,7 +200,7 @@
             <div class="fw-semibold">{{ acct.company_name }}</div>
             <div class="small text-body-secondary">{{ acct.opportunity_count }} deal{{ "s" if acct.opportunity_count != 1 }}</div>
           </div>
-          <div class="fw-semibold" style="color:var(--crm-teal)">${{ "{:,.0f}".format(acct.total_value) }}</div>
+          <div class="fw-semibold" style="color:var(--crm-teal)">CAD ${{ "{:,.0f}".format(acct.total_value) }}</div>
         </div>
         {% else %}
         <p class="text-body-secondary mb-0">No account data yet.</p>
@@ -206,7 +218,7 @@
             <div class="fw-semibold">{{ product.brand }} {{ product.model }}</div>
             <div class="small text-body-secondary">{{ product.total_quantity }} units sold</div>
           </div>
-          <div class="fw-semibold" style="color:var(--crm-teal)">${{ "{:,.0f}".format(product.total_value) }}</div>
+          <div class="fw-semibold" style="color:var(--crm-teal)">CAD ${{ "{:,.0f}".format(product.total_value) }}</div>
         </div>
         {% else %}
         <p class="text-body-secondary mb-0">No closed-won product data yet.</p>
@@ -223,7 +235,13 @@
           <div class="d-flex justify-content-between align-items-center">
             <div>
               <div class="fw-semibold" style="color:var(--crm-navy-light)">{{ opp.title }}</div>
-              <div class="small text-body-secondary">{{ opp.account_name }}{% if opp.amount %} · ${{ "{:,.0f}".format(opp.amount) }}{% endif %}</div>
+              <div class="small text-body-secondary">
+                {{ opp.account_name }}
+                {% if opp.amount %}
+                · {{ opp.currency }} {{ "{:,.0f}".format(opp.amount) }}
+                · CAD {{ "{:,.0f}".format(opp.amount_cad) }}
+                {% endif %}
+              </div>
             </div>
             {% if opp.stage == 'closed_won' %}
             <span class="badge text-bg-success">Won</span>

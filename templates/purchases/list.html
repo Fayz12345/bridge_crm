@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}Purchases | {{ config.APP_NAME }}{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
+  <div>
+    <p class="text-uppercase small fw-semibold text-body-secondary mb-1">Purchases</p>
+    <h1 class="h3 mb-1">Vendor buying workflow</h1>
+    <p class="text-body-secondary mb-0">Track supplier negotiations, expected deliveries, and purchase quote lines by account.</p>
+  </div>
+  <div class="d-flex gap-2">
+    <a class="btn btn-outline-secondary" href="{{ url_for('purchases.pipeline_view') }}">Pipeline</a>
+    <a class="btn btn-primary" href="{{ url_for('purchases.create_view') }}"><span class="material-symbols-outlined">add</span> New Purchase</a>
+  </div>
+</div>
+
+<div class="d-flex flex-wrap gap-2 mb-3">
+  <a class="btn {% if not active_stage %}btn-primary{% else %}btn-outline-secondary{% endif %}" href="{{ url_for('purchases.list_view') }}">All</a>
+  {% for stage in stages %}
+  <a class="btn {% if active_stage == stage.stage_key %}btn-primary{% else %}btn-outline-secondary{% endif %}" href="{{ url_for('purchases.list_view', stage=stage.stage_key) }}">{{ stage.display_name }}</a>
+  {% endfor %}
+</div>
+
+<div class="crm-card">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead>
+        <tr>
+          <th>Purchase</th>
+          <th>Account</th>
+          <th>Stage</th>
+          <th>Estimated Total</th>
+          <th>Owner</th>
+          <th>Expected Delivery</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for purchase in purchases %}
+        <tr>
+          <td>
+            <a class="fw-semibold text-decoration-none" href="{{ url_for('purchases.detail_view', purchase_id=purchase.id) }}">{{ purchase.title }}</a>
+            {% if purchase.supplier_quote_number %}
+            <div class="small text-body-secondary">Supplier quote: {{ purchase.supplier_quote_number }}</div>
+            {% endif %}
+          </td>
+          <td>{{ purchase.account_name }}</td>
+          <td><span class="badge text-bg-light text-uppercase">{{ purchase.stage.replace('_', ' ') }}</span></td>
+          <td>
+            {% if purchase.estimated_total %}
+            <div>{{ purchase.currency }} {{ "{:,.0f}".format(purchase.estimated_total) }}</div>
+            <div class="small text-body-secondary">CAD {{ "{:,.0f}".format(purchase.estimated_total_cad) }}</div>
+            {% else %}
+            —
+            {% endif %}
+          </td>
+          <td>{{ purchase.owner_name or "Unassigned" }}</td>
+          <td>{{ purchase.expected_delivery_date.strftime("%Y-%m-%d") if purchase.expected_delivery_date else "—" }}</td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="6" class="crm-empty-state">
+            <span class="material-symbols-outlined">shopping_cart</span>
+            No purchases found.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

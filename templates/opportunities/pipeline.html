@@ -17,7 +17,7 @@
 
 <div class="row g-3">
   {% for stage in stages %}
-  <div class="col-lg-4">
+  <div class="col-xl-3 col-md-6">
     <div class="crm-card h-100">
       <div class="card-body">
         <div class="d-flex justify-content-between align-items-center mb-3 pb-2" style="border-bottom:2px solid var(--crm-teal)">
@@ -32,9 +32,12 @@
           <a class="fw-semibold text-decoration-none" href="{{ url_for('opportunities.detail_view', opportunity_id=opportunity.id) }}">{{ opportunity.title }}</a>
           <div class="small text-body-secondary mb-2">{{ opportunity.account_name }}</div>
           <div class="small mb-2">
-            {% if opportunity.amount %}${{ "{:,.0f}".format(opportunity.amount) }}{% else %}No amount{% endif %}
+            {% if opportunity.amount %}{{ opportunity.currency }} {{ "{:,.0f}".format(opportunity.amount) }}{% else %}No amount{% endif %}
             · {{ opportunity.probability }}%
           </div>
+          {% if opportunity.amount %}
+          <div class="small text-body-secondary mb-2">CAD {{ "{:,.0f}".format(opportunity.amount_cad) }}</div>
+          {% endif %}
           <form method="post" action="{{ url_for('opportunities.update_stage_view', opportunity_id=opportunity.id) }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="input-group input-group-sm">

@@ -28,7 +28,7 @@
           <th>Account</th>
           <th>Stage</th>
           <th>Amount</th>
-          <th>Owner</th>
+          <th>Salesperson</th>
         </tr>
       </thead>
       <tbody>
@@ -42,8 +42,15 @@
           </td>
           <td>{{ opportunity.account_name }}</td>
           <td><span class="badge text-bg-light text-uppercase">{{ opportunity.stage.replace('_', ' ') }}</span></td>
-          <td>{% if opportunity.amount %}${{ "{:,.0f}".format(opportunity.amount) }}{% else %}—{% endif %}</td>
-          <td>{{ opportunity.owner_name or "Unassigned" }}</td>
+          <td>
+            {% if opportunity.amount %}
+            <div>{{ opportunity.currency }} {{ "{:,.0f}".format(opportunity.amount) }}</div>
+            <div class="small text-body-secondary">CAD {{ "{:,.0f}".format(opportunity.amount_cad) }}</div>
+            {% else %}
+            —
+            {% endif %}
+          </td>
+          <td>{{ opportunity.salesperson_name or "Unassigned" }}</td>
         </tr>
         {% else %}
         <tr>

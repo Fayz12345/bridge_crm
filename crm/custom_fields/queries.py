@@ -9,16 +9,18 @@ from bridge_crm.db.schema import (
     crm_custom_fields,
     crm_leads,
     crm_opportunities,
+    crm_purchases,
     crm_products,
 )
 
-VALID_OBJECT_TYPES = ("account", "lead", "opportunity", "product")
+VALID_OBJECT_TYPES = ("account", "lead", "opportunity", "purchase", "product")
 VALID_FIELD_TYPES = ("text", "textarea", "number", "date", "select", "checkbox")
 
 OBJECT_TABLES = {
     "account": crm_accounts,
     "lead": crm_leads,
     "opportunity": crm_opportunities,
+    "purchase": crm_purchases,
     "product": crm_products,
 }
 

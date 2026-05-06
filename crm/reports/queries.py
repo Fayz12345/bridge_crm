@@ -8,6 +8,10 @@ from bridge_crm.db.schema import (
     crm_opportunity_lines,
     crm_users,
 )
+from bridge_crm.crm.opportunities.constants import (
+    OPEN_OPPORTUNITY_STAGES,
+    opportunity_amount_cad_expression,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -24,12 +28,14 @@ def opportunity_summary_report() -> list[dict]:
             crm_opportunities.c.stage,
             crm_opportunities.c.amount,
             crm_opportunities.c.currency,
+            crm_opportunities.c.conversion_rate_to_cad,
+            opportunity_amount_cad_expression().label("amount_cad"),
             crm_opportunities.c.probability,
             crm_opportunities.c.expected_close_date,
             crm_opportunities.c.close_date,
             crm_opportunities.c.created_at,
             account.c.company_name.label("account_name"),
-            owner.c.full_name.label("owner_name"),
+            owner.c.full_name.label("salesperson_name"),
         )
         .select_from(
             crm_opportunities
@@ -44,16 +50,21 @@ def opportunity_summary_report() -> list[dict]:
 
 
 def opportunity_summary_totals() -> dict:
-    open_stages = ("prospecting", "qualification", "proposal", "negotiation")
     statement = select(
         func.count().label("total"),
-        func.count().filter(crm_opportunities.c.stage.in_(open_stages)).label("open_count"),
+        func.count().filter(crm_opportunities.c.stage.in_(OPEN_OPPORTUNITY_STAGES)).label("open_count"),
         func.coalesce(
-            func.sum(crm_opportunities.c.amount).filter(crm_opportunities.c.stage.in_(open_stages)), 0
+            func.sum(opportunity_amount_cad_expression()).filter(
+                crm_opportunities.c.stage.in_(OPEN_OPPORTUNITY_STAGES)
+            ),
+            0,
         ).label("open_value"),
         func.count().filter(crm_opportunities.c.stage == "closed_won").label("won_count"),
         func.coalesce(
-            func.sum(crm_opportunities.c.amount).filter(crm_opportunities.c.stage == "closed_won"), 0
+            func.sum(opportunity_amount_cad_expression()).filter(
+                crm_opportunities.c.stage == "closed_won"
+            ),
+            0,
         ).label("won_value"),
         func.count().filter(crm_opportunities.c.stage == "closed_lost").label("lost_count"),
     )
@@ -120,21 +131,21 @@ def lead_source_breakdown() -> list[dict]:
 
 def sales_forecast_report() -> list[dict]:
     month_bucket = func.to_char(crm_opportunities.c.expected_close_date, "YYYY-MM")
-    open_stages = ("prospecting", "qualification", "proposal", "negotiation")
     statement = (
         select(
             month_bucket.label("forecast_month"),
             func.count().label("deal_count"),
-            func.coalesce(func.sum(crm_opportunities.c.amount), 0).label("total_amount"),
+            func.coalesce(func.sum(opportunity_amount_cad_expression()), 0).label("total_amount"),
             func.coalesce(
-                func.sum(crm_opportunities.c.amount * crm_opportunities.c.probability / 100.0), 0
+                func.sum(opportunity_amount_cad_expression() * crm_opportunities.c.probability / 100.0),
+                0,
             ).label("weighted_amount"),
             func.round(func.avg(crm_opportunities.c.probability), 0).label("avg_probability"),
         )
         .where(
             crm_opportunities.c.expected_close_date.is_not(None),
             crm_opportunities.c.amount.is_not(None),
-            crm_opportunities.c.stage.in_(open_stages),
+            crm_opportunities.c.stage.in_(OPEN_OPPORTUNITY_STAGES),
         )
         .group_by(month_bucket)
         .order_by(month_bucket)
@@ -156,22 +167,20 @@ def sales_forecast_totals(forecast_rows: list[dict]) -> dict:
 # ---------------------------------------------------------------------------
 
 def accounts_by_value_report() -> dict:
-    open_stages = ("prospecting", "qualification", "proposal", "negotiation")
-
     def _query(stage_filter):
         statement = (
             select(
                 crm_accounts.c.id,
                 crm_accounts.c.company_name,
                 func.count(crm_opportunities.c.id).label("deal_count"),
-                func.coalesce(func.sum(crm_opportunities.c.amount), 0).label("total_value"),
+                func.coalesce(func.sum(opportunity_amount_cad_expression()), 0).label("total_value"),
             )
             .select_from(
                 crm_accounts.join(crm_opportunities, crm_accounts.c.id == crm_opportunities.c.account_id)
             )
             .where(stage_filter)
             .group_by(crm_accounts.c.id, crm_accounts.c.company_name)
-            .order_by(func.coalesce(func.sum(crm_opportunities.c.amount), 0).desc())
+            .order_by(func.coalesce(func.sum(opportunity_amount_cad_expression()), 0).desc())
         )
         with get_connection() as connection:
             rows = connection.execute(statement).mappings().all()
@@ -179,7 +188,7 @@ def accounts_by_value_report() -> dict:
 
     return {
         "closed_won": _query(crm_opportunities.c.stage == "closed_won"),
-        "open": _query(crm_opportunities.c.stage.in_(open_stages)),
+        "open": _query(crm_opportunities.c.stage.in_(OPEN_OPPORTUNITY_STAGES)),
     }
 
 
@@ -195,7 +204,10 @@ def products_sold_report() -> list[dict]:
             crm_opportunity_lines.c.grade,
             crm_opportunity_lines.c.storage,
             func.sum(crm_opportunity_lines.c.quantity).label("total_quantity"),
-            func.sum(crm_opportunity_lines.c.line_total).label("total_value"),
+            func.sum(
+                crm_opportunity_lines.c.line_total
+                * func.coalesce(crm_opportunities.c.conversion_rate_to_cad, 1)
+            ).label("total_value"),
         )
         .select_from(
             crm_opportunity_lines.join(
@@ -210,7 +222,12 @@ def products_sold_report() -> list[dict]:
             crm_opportunity_lines.c.grade,
             crm_opportunity_lines.c.storage,
         )
-        .order_by(func.sum(crm_opportunity_lines.c.line_total).desc())
+        .order_by(
+            func.sum(
+                crm_opportunity_lines.c.line_total
+                * func.coalesce(crm_opportunities.c.conversion_rate_to_cad, 1)
+            ).desc()
+        )
     )
     with get_connection() as connection:
         rows = connection.execute(statement).mappings().all()
@@ -232,7 +249,7 @@ def pipeline_breakdown() -> list[dict]:
         select(
             crm_opportunities.c.stage,
             func.count().label("count"),
-            func.coalesce(func.sum(crm_opportunities.c.amount), 0).label("amount"),
+            func.coalesce(func.sum(opportunity_amount_cad_expression()), 0).label("amount_cad"),
         )
         .group_by(crm_opportunities.c.stage)
         .order_by(crm_opportunities.c.stage)

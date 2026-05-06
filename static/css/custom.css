@@ -64,9 +64,9 @@ h1, h2, h3, h4, h5, h6,
 
 .crm-navbar .nav-link {
   color: rgba(255, 255, 255, 0.7) !important;
-  font-size: 0.775rem;
+  font-size: 0.74rem;
   font-weight: 600;
-  padding: 0.4rem 0.55rem !important;
+  padding: 0.38rem 0.45rem !important;
   border-radius: var(--crm-radius-sm);
   transition: color 0.15s, background 0.15s;
   display: flex;

@@ -4,7 +4,11 @@ from sqlalchemy import delete, func, insert, select, update
 from werkzeug.security import generate_password_hash
 
 from bridge_crm.db.engine import get_connection
-from bridge_crm.db.schema import crm_login_attempts, crm_users
+from bridge_crm.db.schema import (
+    crm_login_attempts,
+    crm_password_reset_tokens,
+    crm_users,
+)
 
 VALID_USER_ROLES = ("admin", "manager", "rep")
 
@@ -102,6 +106,19 @@ def update_user(user_id: int, full_name: str, role: str, is_active: bool, passwo
         connection.execute(statement)
 
 
+def set_user_password(user_id: int, password: str) -> None:
+    statement = (
+        update(crm_users)
+        .where(crm_users.c.id == user_id)
+        .values(
+            password_hash=generate_password_hash(password),
+            updated_at=datetime.now(timezone.utc),
+        )
+    )
+    with get_connection() as connection:
+        connection.execute(statement)
+
+
 def record_login_attempt(email: str, ip_address: str, successful: bool) -> None:
     statement = insert(crm_login_attempts).values(
         email=email.strip().lower(),
@@ -127,6 +144,76 @@ def clear_login_attempts(ip_address: str, email: str) -> None:
     statement = delete(crm_login_attempts).where(
         crm_login_attempts.c.ip_address == ip_address,
         func.lower(crm_login_attempts.c.email) == email.lower(),
+    )
+    with get_connection() as connection:
+        connection.execute(statement)
+
+
+def invalidate_password_reset_tokens(user_id: int) -> None:
+    statement = (
+        update(crm_password_reset_tokens)
+        .where(
+            crm_password_reset_tokens.c.user_id == user_id,
+            crm_password_reset_tokens.c.used_at.is_(None),
+        )
+        .values(used_at=datetime.now(timezone.utc))
+    )
+    with get_connection() as connection:
+        connection.execute(statement)
+
+
+def create_password_reset_token(
+    user_id: int,
+    token_hash: str,
+    expires_at: datetime,
+    requested_by: int | None = None,
+) -> int:
+    statement = (
+        insert(crm_password_reset_tokens)
+        .values(
+            user_id=user_id,
+            token_hash=token_hash,
+            expires_at=expires_at,
+            requested_by=requested_by,
+        )
+        .returning(crm_password_reset_tokens.c.id)
+    )
+    with get_connection() as connection:
+        token_id = connection.execute(statement).scalar_one()
+    return int(token_id)
+
+
+def get_active_password_reset_token(token_hash: str):
+    statement = (
+        select(
+            crm_password_reset_tokens.c.id,
+            crm_password_reset_tokens.c.user_id,
+            crm_password_reset_tokens.c.expires_at,
+            crm_users.c.email,
+            crm_users.c.full_name,
+            crm_users.c.is_active,
+        )
+        .select_from(
+            crm_password_reset_tokens.join(
+                crm_users, crm_users.c.id == crm_password_reset_tokens.c.user_id
+            )
+        )
+        .where(
+            crm_password_reset_tokens.c.token_hash == token_hash,
+            crm_password_reset_tokens.c.used_at.is_(None),
+            crm_password_reset_tokens.c.expires_at >= datetime.now(timezone.utc),
+        )
+    )
+    with get_connection() as connection:
+        result = connection.execute(statement).mappings().first()
+    return dict(result) if result else None
+
+
+def mark_password_reset_token_used(token_id: int) -> None:
+    statement = (
+        update(crm_password_reset_tokens)
+        .where(crm_password_reset_tokens.c.id == token_id)
+        .values(used_at=datetime.now(timezone.utc))
     )
     with get_connection() as connection:
         connection.execute(statement)

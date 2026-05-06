@@ -1,4 +1,5 @@
 import re
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
 from flask import Blueprint, abort, flash, g, redirect, render_template, request, send_file, url_for
@@ -39,6 +40,12 @@ from bridge_crm.crm.opportunities.queries import (
     update_opportunity_stage,
     update_opportunity,
     upsert_pipeline_stage,
+)
+from bridge_crm.crm.opportunities.constants import (
+    OPPORTUNITY_CURRENCY_CODES,
+    DEFAULT_OPPORTUNITY_CURRENCY,
+    OPPORTUNITY_CURRENCY_OPTIONS,
+    OPPORTUNITY_STAGE_KEYS,
 )
 from bridge_crm.crm.products.queries import list_product_stock_groups
 from bridge_crm.integrations.email_sender import send_email, smtp_configured
@@ -184,16 +191,41 @@ def _create_mention_notifications(opportunity: dict, mentions: list[dict], note:
 
 def _build_payload(form_data, user_id: int, existing: dict | None = None) -> dict:
     stage = form_data.get("stage", (existing or {}).get("stage", "prospecting")).strip()
+    if stage not in OPPORTUNITY_STAGE_KEYS:
+        raise ValueError("Please select a valid opportunity stage.")
     probability = form_data.get(
         "probability", str((existing or {}).get("probability", 10))
     ).strip()
+    currency = (
+        form_data.get(
+            "currency",
+            (existing or {}).get("currency", DEFAULT_OPPORTUNITY_CURRENCY),
+        )
+        .strip()
+        .upper()
+        or DEFAULT_OPPORTUNITY_CURRENCY
+    )
+    if currency not in OPPORTUNITY_CURRENCY_CODES:
+        raise ValueError("Please select a supported currency.")
+    raw_conversion_rate = form_data.get(
+        "conversion_rate_to_cad",
+        str((existing or {}).get("conversion_rate_to_cad", "1")),
+    ).strip()
+    try:
+        conversion_rate_to_cad = Decimal(raw_conversion_rate or "1")
+    except InvalidOperation as exc:
+        raise ValueError("Conversion rate to CAD must be a valid number.") from exc
+    if conversion_rate_to_cad <= 0:
+        raise ValueError("Conversion rate to CAD must be greater than 0.")
+
     return {
         "title": form_data.get("title", "").strip(),
         "account_id": _int_or_none(form_data.get("account_id")),
         "contact_id": _int_or_none(form_data.get("contact_id")),
         "stage": stage,
         "amount": form_data.get("amount", "").strip() or None,
-        "currency": form_data.get("currency", "CAD").strip() or "CAD",
+        "currency": currency,
+        "conversion_rate_to_cad": str(conversion_rate_to_cad),
         "probability": int(probability or "10"),
         "expected_close_date": form_data.get("expected_close_date", "").strip() or None,
         "close_date": form_data.get("close_date", "").strip() or None,
@@ -237,7 +269,11 @@ def pipeline_view():
 @opportunities_bp.route("/new", methods=["GET", "POST"])
 @login_required
 def create_view():
-    form_data = request.form if request.method == "POST" else {"owner_id": g.user["id"]}
+    form_data = request.form if request.method == "POST" else {
+        "owner_id": g.user["id"],
+        "currency": DEFAULT_OPPORTUNITY_CURRENCY,
+        "conversion_rate_to_cad": "1",
+    }
     accounts = list_accounts_for_select()
     owners = list_assignable_users()
     custom_field_definitions = list_custom_fields("opportunity", active_only=True)
@@ -246,23 +282,31 @@ def create_view():
     stages = get_pipeline_stages()
 
     if request.method == "POST":
-        payload = _build_payload(request.form, g.user["id"])
-        payload["custom_fields"] = extract_custom_field_values(request.form, custom_field_definitions)
-        if not payload["title"] or not payload["account_id"]:
-            flash("Title and account are required.", "danger")
-        else:
-            opportunity_id = create_opportunity(payload)
-            log_activity(
-                "opportunity",
-                opportunity_id,
-                "created",
-                "Opportunity created.",
-                g.user["id"],
+        try:
+            payload = _build_payload(request.form, g.user["id"])
+        except ValueError as exc:
+            flash(str(exc), "danger")
+            payload = None
+
+        if payload is not None:
+            payload["custom_fields"] = extract_custom_field_values(
+                request.form, custom_field_definitions
             )
-            flash("Opportunity created.", "success")
-            return redirect(
-                url_for("opportunities.detail_view", opportunity_id=opportunity_id)
-            )
+            if not payload["title"] or not payload["account_id"]:
+                flash("Title and account are required.", "danger")
+            else:
+                opportunity_id = create_opportunity(payload)
+                log_activity(
+                    "opportunity",
+                    opportunity_id,
+                    "created",
+                    "Opportunity created.",
+                    g.user["id"],
+                )
+                flash("Opportunity created.", "success")
+                return redirect(
+                    url_for("opportunities.detail_view", opportunity_id=opportunity_id)
+                )
 
     return render_template(
         "opportunities/form.html",
@@ -272,6 +316,7 @@ def create_view():
         owners=owners,
         contacts=contacts,
         stages=stages,
+        currency_options=OPPORTUNITY_CURRENCY_OPTIONS,
         custom_field_definitions=custom_field_definitions,
         custom_field_values=extract_custom_field_values(form_data, custom_field_definitions) if request.method == "POST" else {},
         page_title="New Opportunity",
@@ -343,26 +388,38 @@ def edit_view(opportunity_id: int):
     stages = get_pipeline_stages()
 
     if request.method == "POST":
-        payload = _build_payload(request.form, opportunity["owner_id"] or g.user["id"], existing=opportunity)
-        payload["custom_fields"] = extract_custom_field_values(request.form, custom_field_definitions)
-        if not payload["title"] or not payload["account_id"]:
-            flash("Title and account are required.", "danger")
-        else:
-            previous_stage = opportunity["stage"]
-            update_opportunity(opportunity_id, payload)
-            if previous_stage != payload["stage"]:
-                log_activity(
-                    "opportunity",
-                    opportunity_id,
-                    "stage_changed",
-                    f"Opportunity stage changed from {previous_stage} to {payload['stage']}.",
-                    g.user["id"],
-                    {"from": previous_stage, "to": payload["stage"]},
-                )
-            flash("Opportunity updated.", "success")
-            return redirect(
-                url_for("opportunities.detail_view", opportunity_id=opportunity_id)
+        try:
+            payload = _build_payload(
+                request.form,
+                opportunity["owner_id"] or g.user["id"],
+                existing=opportunity,
             )
+        except ValueError as exc:
+            flash(str(exc), "danger")
+            payload = None
+
+        if payload is not None:
+            payload["custom_fields"] = extract_custom_field_values(
+                request.form, custom_field_definitions
+            )
+            if not payload["title"] or not payload["account_id"]:
+                flash("Title and account are required.", "danger")
+            else:
+                previous_stage = opportunity["stage"]
+                update_opportunity(opportunity_id, payload)
+                if previous_stage != payload["stage"]:
+                    log_activity(
+                        "opportunity",
+                        opportunity_id,
+                        "stage_changed",
+                        f"Opportunity stage changed from {previous_stage} to {payload['stage']}.",
+                        g.user["id"],
+                        {"from": previous_stage, "to": payload["stage"]},
+                    )
+                flash("Opportunity updated.", "success")
+                return redirect(
+                    url_for("opportunities.detail_view", opportunity_id=opportunity_id)
+                )
 
     return render_template(
         "opportunities/form.html",
@@ -372,6 +429,7 @@ def edit_view(opportunity_id: int):
         owners=owners,
         contacts=contacts,
         stages=stages,
+        currency_options=OPPORTUNITY_CURRENCY_OPTIONS,
         custom_field_definitions=custom_field_definitions,
         custom_field_values=extract_custom_field_values(form_data, custom_field_definitions) if request.method == "POST" else (opportunity.get("custom_fields") or {}),
         page_title="Edit Opportunity",
@@ -694,6 +752,9 @@ def stages_view():
         stage_key = request.form.get("stage_key", "").strip()
         display_name = request.form.get("display_name", "").strip()
         if stage_key and display_name:
+            if stage_key not in OPPORTUNITY_STAGE_KEYS:
+                flash("Only the standard opportunity stages can be configured here.", "danger")
+                return redirect(url_for("opportunities.stages_view"))
             upsert_pipeline_stage(
                 {
                     "stage_key": stage_key,

@@ -5,10 +5,10 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
   <div>
-    <p class="text-uppercase small fw-semibold text-body-secondary mb-1">Opportunities</p>
+    <p class="text-uppercase small fw-semibold text-body-secondary mb-1">Purchases</p>
     <h1 class="h3 mb-0">{{ page_title }}</h1>
   </div>
-  <a class="btn btn-outline-secondary" href="{{ url_for('opportunities.list_view') }}"><span class="material-symbols-outlined">arrow_back</span> Back to Opportunities</a>
+  <a class="btn btn-outline-secondary" href="{{ url_for('purchases.list_view') }}"><span class="material-symbols-outlined">arrow_back</span> Back to Purchases</a>
 </div>
 
 <div class="crm-card">
@@ -39,7 +39,7 @@
           </select>
         </div>
         <div class="col-md-6">
-          <label class="form-label" for="owner_id">Salesperson</label>
+          <label class="form-label" for="owner_id">Owner</label>
           <select class="form-select" id="owner_id" name="owner_id">
             <option value="">Unassigned</option>
             {% for owner in owners %}
@@ -56,12 +56,12 @@
           </select>
         </div>
         <div class="col-md-3">
-          <label class="form-label" for="probability">Probability %</label>
-          <input class="form-control" id="probability" name="probability" type="number" min="0" max="100" value="{{ form_data.probability or 10 }}">
+          <label class="form-label" for="supplier_quote_number">Supplier Quote #</label>
+          <input class="form-control" id="supplier_quote_number" name="supplier_quote_number" value="{{ form_data.supplier_quote_number or '' }}">
         </div>
         <div class="col-md-4">
-          <label class="form-label" for="amount">Amount</label>
-          <input class="form-control" id="amount" name="amount" type="number" step="0.01" value="{{ form_data.amount or '' }}">
+          <label class="form-label" for="estimated_total">Estimated Total</label>
+          <input class="form-control" id="estimated_total" name="estimated_total" type="number" step="0.01" value="{{ form_data.estimated_total or '' }}">
         </div>
         <div class="col-md-2">
           <label class="form-label" for="currency">Currency</label>
@@ -76,8 +76,8 @@
           <input class="form-control" id="conversion_rate_to_cad" name="conversion_rate_to_cad" type="number" min="0.000001" step="0.000001" value="{{ form_data.conversion_rate_to_cad or '1' }}" required>
         </div>
         <div class="col-md-3">
-          <label class="form-label" for="expected_close_date">Expected Close</label>
-          <input class="form-control" id="expected_close_date" name="expected_close_date" type="date" value="{{ form_data.expected_close_date or '' }}">
+          <label class="form-label" for="expected_delivery_date">Expected Delivery</label>
+          <input class="form-control" id="expected_delivery_date" name="expected_delivery_date" type="date" value="{{ form_data.expected_delivery_date or '' }}">
         </div>
         <div class="col-md-3">
           <label class="form-label" for="close_date">Close Date</label>
@@ -101,7 +101,7 @@
       </div>
       <div class="d-flex gap-2 mt-4">
         <button class="btn btn-primary" type="submit"><span class="material-symbols-outlined">save</span> {{ submit_label }}</button>
-        <a class="btn btn-outline-secondary" href="{% if opportunity %}{{ url_for('opportunities.detail_view', opportunity_id=opportunity.id) }}{% else %}{{ url_for('opportunities.list_view') }}{% endif %}">Cancel</a>
+        <a class="btn btn-outline-secondary" href="{% if purchase %}{{ url_for('purchases.detail_view', purchase_id=purchase.id) }}{% else %}{{ url_for('purchases.list_view') }}{% endif %}">Cancel</a>
       </div>
     </form>
   </div>

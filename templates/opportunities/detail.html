@@ -37,7 +37,24 @@
           </div>
           <div class="col-md-6">
             <div class="crm-field-label">Amount</div>
-            <div>{% if opportunity.amount %}${{ "{:,.2f}".format(opportunity.amount) }} {{ opportunity.currency }}{% else %}—{% endif %}</div>
+            <div>
+              {% if opportunity.amount %}
+              {{ opportunity.currency }} {{ "{:,.2f}".format(opportunity.amount) }}
+              {% else %}
+              —
+              {% endif %}
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="crm-field-label">CAD Equivalent</div>
+            <div>
+              {% if opportunity.amount_cad %}
+              CAD {{ "{:,.2f}".format(opportunity.amount_cad) }}
+              {% else %}
+              —
+              {% endif %}
+            </div>
+            <div class="small text-body-secondary">Rate: {{ "{:,.6f}".format(opportunity.conversion_rate_to_cad) }}</div>
           </div>
           <div class="col-md-6">
             <div class="crm-field-label">Expected Close</div>
@@ -52,8 +69,8 @@
             <div>{{ opportunity.contact_email or opportunity.account_email or "—" }}</div>
           </div>
           <div class="col-md-6">
-            <div class="crm-field-label">Owner</div>
-            <div>{{ opportunity.owner_name or "Unassigned" }}</div>
+            <div class="crm-field-label">Salesperson</div>
+            <div>{{ opportunity.salesperson_name or "Unassigned" }}</div>
           </div>
           <div class="col-12">
             <div class="crm-field-label">Notes</div>
@@ -94,8 +111,8 @@
                   <div class="small text-body-secondary">{{ line.grade or "—" }} · {{ line.storage or "—" }}</div>
                 </td>
                 <td>{{ line.quantity }}</td>
-                <td>${{ "{:,.2f}".format(line.unit_price) }}</td>
-                <td>${{ "{:,.2f}".format(line.line_total) }}</td>
+                <td>{{ opportunity.currency }} {{ "{:,.2f}".format(line.unit_price) }}</td>
+                <td>{{ opportunity.currency }} {{ "{:,.2f}".format(line.line_total) }}</td>
                 <td class="text-nowrap">
                   <button class="btn btn-sm btn-outline-secondary" type="button" onclick="document.getElementById('line-display-{{ line.id }}').classList.add('d-none'); document.getElementById('line-edit-{{ line.id }}').classList.remove('d-none');" title="Edit">
                     <span class="material-symbols-outlined" style="font-size:16px">edit</span>

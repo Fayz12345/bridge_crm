@@ -7,6 +7,7 @@
   <div>
     <p class="text-uppercase small fw-semibold text-body-secondary mb-1">Reports</p>
     <h1 class="h3 mb-0">Sales Reports</h1>
+    <p class="text-body-secondary mb-0 mt-2">Opportunity-based totals are normalized to CAD using each deal's conversion rate.</p>
   </div>
   <div class="d-flex flex-wrap gap-2">
     <a class="btn btn-outline-primary btn-sm" href="{{ url_for('reports.opportunities_csv') }}"><span class="material-symbols-outlined" style="font-size:18px">download</span> Opportunities</a>
@@ -33,14 +34,14 @@
         <div class="p-3 rounded-3 bg-body-tertiary text-center">
           <div class="small text-body-secondary text-uppercase fw-semibold">Open</div>
           <div class="h4 mb-0" style="color:var(--crm-teal)">{{ opp_totals.open_count }}</div>
-          <div class="small text-body-secondary">${{ "{:,.0f}".format(opp_totals.open_value) }}</div>
+          <div class="small text-body-secondary">CAD ${{ "{:,.0f}".format(opp_totals.open_value) }}</div>
         </div>
       </div>
       <div class="col-6 col-md-3">
         <div class="p-3 rounded-3 bg-body-tertiary text-center">
           <div class="small text-body-secondary text-uppercase fw-semibold">Won</div>
           <div class="h4 mb-0 text-success">{{ opp_totals.won_count }}</div>
-          <div class="small text-body-secondary">${{ "{:,.0f}".format(opp_totals.won_value) }}</div>
+          <div class="small text-body-secondary">CAD ${{ "{:,.0f}".format(opp_totals.won_value) }}</div>
         </div>
       </div>
       <div class="col-6 col-md-3">
@@ -56,9 +57,10 @@
           <tr>
             <th>Opportunity</th>
             <th>Account</th>
-            <th>Owner</th>
+            <th>Salesperson</th>
             <th>Stage</th>
             <th class="text-end">Amount</th>
+            <th class="text-end">CAD Value</th>
             <th class="text-end">Prob.</th>
             <th>Expected Close</th>
           </tr>
@@ -68,14 +70,15 @@
           <tr>
             <td><a href="{{ url_for('opportunities.detail_view', opportunity_id=row.id) }}">{{ row.title }}</a></td>
             <td>{{ row.account_name }}</td>
-            <td>{{ row.owner_name or "—" }}</td>
+            <td>{{ row.salesperson_name or "—" }}</td>
             <td><span class="badge text-bg-light text-uppercase">{{ row.stage.replace('_', ' ') }}</span></td>
-            <td class="text-end">{% if row.amount %}${{ "{:,.2f}".format(row.amount) }}{% else %}—{% endif %}</td>
+            <td class="text-end">{% if row.amount %}{{ row.currency }} {{ "{:,.2f}".format(row.amount) }}{% else %}—{% endif %}</td>
+            <td class="text-end">{% if row.amount_cad %}CAD {{ "{:,.2f}".format(row.amount_cad) }}{% else %}—{% endif %}</td>
             <td class="text-end">{{ row.probability }}%</td>
             <td>{{ row.expected_close_date.strftime("%Y-%m-%d") if row.expected_close_date else "—" }}</td>
           </tr>
           {% else %}
-          <tr><td colspan="7" class="text-body-secondary text-center py-4">No opportunity data yet.</td></tr>
+          <tr><td colspan="8" class="text-body-secondary text-center py-4">No opportunity data yet.</td></tr>
           {% endfor %}
         </tbody>
       </table>
@@ -163,13 +166,13 @@
       <div class="col-6 col-md-4">
         <div class="p-3 rounded-3 bg-body-tertiary text-center">
           <div class="small text-body-secondary text-uppercase fw-semibold">Total Pipeline</div>
-          <div class="h4 mb-0" style="color:var(--crm-teal)">${{ "{:,.0f}".format(forecast_totals.total_amount) }}</div>
+          <div class="h4 mb-0" style="color:var(--crm-teal)">CAD ${{ "{:,.0f}".format(forecast_totals.total_amount) }}</div>
         </div>
       </div>
       <div class="col-6 col-md-4">
         <div class="p-3 rounded-3 bg-body-tertiary text-center">
           <div class="small text-body-secondary text-uppercase fw-semibold">Weighted Forecast</div>
-          <div class="h4 mb-0" style="color:var(--crm-teal)">${{ "{:,.0f}".format(forecast_totals.weighted_amount) }}</div>
+          <div class="h4 mb-0" style="color:var(--crm-teal)">CAD ${{ "{:,.0f}".format(forecast_totals.weighted_amount) }}</div>
         </div>
       </div>
     </div>
@@ -189,9 +192,9 @@
           <tr>
             <td>{{ row.forecast_month }}</td>
             <td class="text-end">{{ row.deal_count }}</td>
-            <td class="text-end">${{ "{:,.0f}".format(row.total_amount) }}</td>
+            <td class="text-end">CAD ${{ "{:,.0f}".format(row.total_amount) }}</td>
             <td class="text-end">{{ row.avg_probability|int }}%</td>
-            <td class="text-end fw-semibold">${{ "{:,.0f}".format(row.weighted_amount) }}</td>
+            <td class="text-end fw-semibold">CAD ${{ "{:,.0f}".format(row.weighted_amount) }}</td>
           </tr>
           {% else %}
           <tr><td colspan="5" class="text-body-secondary text-center py-4">No forecast data yet.</td></tr>
@@ -225,7 +228,7 @@
               <tr>
                 <td><a href="{{ url_for('accounts.detail_view', account_id=row.id) }}">{{ row.company_name }}</a></td>
                 <td class="text-end">{{ row.deal_count }}</td>
-                <td class="text-end fw-semibold">${{ "{:,.0f}".format(row.total_value) }}</td>
+                <td class="text-end fw-semibold">CAD ${{ "{:,.0f}".format(row.total_value) }}</td>
               </tr>
               {% else %}
               <tr><td colspan="3" class="text-body-secondary text-center py-4">No closed-won accounts yet.</td></tr>
@@ -250,7 +253,7 @@
               <tr>
                 <td><a href="{{ url_for('accounts.detail_view', account_id=row.id) }}">{{ row.company_name }}</a></td>
                 <td class="text-end">{{ row.deal_count }}</td>
-                <td class="text-end fw-semibold">${{ "{:,.0f}".format(row.total_value) }}</td>
+                <td class="text-end fw-semibold">CAD ${{ "{:,.0f}".format(row.total_value) }}</td>
               </tr>
               {% else %}
               <tr><td colspan="3" class="text-body-secondary text-center py-4">No open accounts yet.</td></tr>
@@ -279,7 +282,7 @@
       <div class="col-6 col-md-4">
         <div class="p-3 rounded-3 bg-body-tertiary text-center">
           <div class="small text-body-secondary text-uppercase fw-semibold">Total Revenue</div>
-          <div class="h4 mb-0" style="color:var(--crm-teal)">${{ "{:,.0f}".format(product_totals.total_value) }}</div>
+          <div class="h4 mb-0" style="color:var(--crm-teal)">CAD ${{ "{:,.0f}".format(product_totals.total_value) }}</div>
         </div>
       </div>
     </div>
@@ -301,7 +304,7 @@
             <td>{{ row.grade or "—" }}</td>
             <td>{{ row.storage or "—" }}</td>
             <td class="text-end">{{ row.total_quantity }}</td>
-            <td class="text-end fw-semibold">${{ "{:,.2f}".format(row.total_value) }}</td>
+            <td class="text-end fw-semibold">CAD ${{ "{:,.2f}".format(row.total_value) }}</td>
           </tr>
           {% else %}
           <tr><td colspan="5" class="text-body-secondary text-center py-4">No closed-won product data yet.</td></tr>

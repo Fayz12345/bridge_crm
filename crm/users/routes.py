@@ -1,4 +1,4 @@
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask import Blueprint, current_app, flash, g, redirect, render_template, request, url_for
 
 from bridge_crm.crm.auth.queries import (
     VALID_USER_ROLES,
@@ -8,7 +8,7 @@ from bridge_crm.crm.auth.queries import (
     list_users,
     update_user,
 )
-from bridge_crm.crm.auth.routes import admin_required
+from bridge_crm.crm.auth.routes import admin_required, send_password_reset_email
 from bridge_crm.integrations.email_sender import send_email, smtp_configured
 
 users_bp = Blueprint(
@@ -28,7 +28,7 @@ def _normalize_role(value: str | None) -> str:
 @admin_required
 def list_view():
     users = list_users()
-    return render_template("users/list.html", users=users)
+    return render_template("users/list.html", users=users, email_ready=smtp_configured())
 
 
 @users_bp.route("/new", methods=["GET", "POST"])
@@ -77,7 +77,7 @@ def create_view():
                 except Exception:
                     flash("User created but the welcome email could not be sent.", "warning")
             else:
-                flash("User created. SMTP is not configured so no welcome email was sent.", "success")
+                flash("User created. Email delivery is not configured so no welcome email was sent.", "success")
             return redirect(url_for("users.list_view"))
 
     return render_template(
@@ -88,6 +88,30 @@ def create_view():
         submit_label="Create User",
         role_options=VALID_USER_ROLES,
     )
+
+
+@users_bp.route("/<int:user_id>/send-reset", methods=["POST"])
+@admin_required
+def send_reset_view(user_id: int):
+    user_record = get_user_by_id(user_id)
+    if not user_record:
+        flash("User not found.", "danger")
+    elif not user_record.get("is_active"):
+        flash("Activate this user before sending a password reset.", "warning")
+    elif not smtp_configured():
+        flash("Email delivery is not configured, so reset emails cannot be sent.", "warning")
+    else:
+        try:
+            send_password_reset_email(
+                user_record,
+                requested_by=g.user["id"],
+                requested_by_name=g.user["full_name"],
+            )
+            flash(f"Password reset email sent to {user_record['email']}.", "success")
+        except Exception:
+            current_app.logger.exception("Admin password reset email failed")
+            flash("Password reset email could not be sent.", "warning")
+    return redirect(url_for("users.list_view"))
 
 
 @users_bp.route("/<int:user_id>/edit", methods=["GET", "POST"])

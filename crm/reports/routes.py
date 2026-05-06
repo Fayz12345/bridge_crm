@@ -61,7 +61,7 @@ def index():
 def pipeline_csv():
     rows = pipeline_breakdown()
     output = io.StringIO()
-    writer = csv.DictWriter(output, fieldnames=["stage", "count", "amount"])
+    writer = csv.DictWriter(output, fieldnames=["stage", "count", "amount_cad"])
     writer.writeheader()
     writer.writerows(rows)
     return Response(
@@ -78,7 +78,19 @@ def opportunities_csv():
     output = io.StringIO()
     writer = csv.DictWriter(
         output,
-        fieldnames=["title", "account_name", "owner_name", "stage", "amount", "currency", "probability", "expected_close_date", "close_date"],
+        fieldnames=[
+            "title",
+            "account_name",
+            "salesperson_name",
+            "stage",
+            "amount",
+            "currency",
+            "conversion_rate_to_cad",
+            "amount_cad",
+            "probability",
+            "expected_close_date",
+            "close_date",
+        ],
     )
     writer.writeheader()
     for row in rows:

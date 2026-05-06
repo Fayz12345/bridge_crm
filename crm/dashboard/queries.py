@@ -10,6 +10,10 @@ from bridge_crm.db.schema import (
     crm_opportunity_lines,
     crm_users,
 )
+from bridge_crm.crm.opportunities.constants import (
+    OPEN_OPPORTUNITY_STAGES,
+    opportunity_amount_cad_expression,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -25,6 +29,8 @@ def my_opportunities(user_id: int, limit: int = 10) -> list[dict]:
             crm_opportunities.c.stage,
             crm_opportunities.c.amount,
             crm_opportunities.c.currency,
+            crm_opportunities.c.conversion_rate_to_cad,
+            opportunity_amount_cad_expression().label("amount_cad"),
             crm_opportunities.c.expected_close_date,
             account.c.company_name.label("account_name"),
         )
@@ -41,13 +47,12 @@ def my_opportunities(user_id: int, limit: int = 10) -> list[dict]:
 
 
 def my_pipeline_value(user_id: int) -> dict:
-    open_stages = ("prospecting", "qualification", "proposal", "negotiation")
     statement = select(
         func.count().label("count"),
-        func.coalesce(func.sum(crm_opportunities.c.amount), 0).label("value"),
+        func.coalesce(func.sum(opportunity_amount_cad_expression()), 0).label("value"),
     ).where(
         crm_opportunities.c.owner_id == user_id,
-        crm_opportunities.c.stage.in_(open_stages),
+        crm_opportunities.c.stage.in_(OPEN_OPPORTUNITY_STAGES),
     )
     with get_connection() as connection:
         row = connection.execute(statement).mappings().first()
@@ -92,13 +97,13 @@ def top_accounts_by_value(limit: int = 10) -> list[dict]:
             crm_accounts.c.id,
             crm_accounts.c.company_name,
             func.count(crm_opportunities.c.id).label("opportunity_count"),
-            func.coalesce(func.sum(crm_opportunities.c.amount), 0).label("total_value"),
+            func.coalesce(func.sum(opportunity_amount_cad_expression()), 0).label("total_value"),
         )
         .select_from(
             crm_accounts.join(crm_opportunities, crm_accounts.c.id == crm_opportunities.c.account_id)
         )
         .group_by(crm_accounts.c.id, crm_accounts.c.company_name)
-        .order_by(func.coalesce(func.sum(crm_opportunities.c.amount), 0).desc())
+        .order_by(func.coalesce(func.sum(opportunity_amount_cad_expression()), 0).desc())
         .limit(limit)
     )
     with get_connection() as connection:
@@ -116,9 +121,11 @@ def all_recent_opportunities(limit: int = 10) -> list[dict]:
             crm_opportunities.c.stage,
             crm_opportunities.c.amount,
             crm_opportunities.c.currency,
+            crm_opportunities.c.conversion_rate_to_cad,
+            opportunity_amount_cad_expression().label("amount_cad"),
             crm_opportunities.c.created_at,
             account.c.company_name.label("account_name"),
-            owner.c.full_name.label("owner_name"),
+            owner.c.full_name.label("salesperson_name"),
         )
         .select_from(
             crm_opportunities
@@ -139,7 +146,10 @@ def top_selling_products(limit: int = 10) -> list[dict]:
             crm_opportunity_lines.c.brand,
             crm_opportunity_lines.c.model,
             func.sum(crm_opportunity_lines.c.quantity).label("total_quantity"),
-            func.sum(crm_opportunity_lines.c.line_total).label("total_value"),
+            func.sum(
+                crm_opportunity_lines.c.line_total
+                * func.coalesce(crm_opportunities.c.conversion_rate_to_cad, 1)
+            ).label("total_value"),
         )
         .select_from(
             crm_opportunity_lines.join(
@@ -149,7 +159,12 @@ def top_selling_products(limit: int = 10) -> list[dict]:
         )
         .where(crm_opportunities.c.stage == "closed_won")
         .group_by(crm_opportunity_lines.c.brand, crm_opportunity_lines.c.model)
-        .order_by(func.sum(crm_opportunity_lines.c.line_total).desc())
+        .order_by(
+            func.sum(
+                crm_opportunity_lines.c.line_total
+                * func.coalesce(crm_opportunities.c.conversion_rate_to_cad, 1)
+            ).desc()
+        )
         .limit(limit)
     )
     with get_connection() as connection:
@@ -158,11 +173,10 @@ def top_selling_products(limit: int = 10) -> list[dict]:
 
 
 def total_open_opportunities() -> dict:
-    open_stages = ("prospecting", "qualification", "proposal", "negotiation")
     statement = select(
         func.count().label("count"),
-        func.coalesce(func.sum(crm_opportunities.c.amount), 0).label("value"),
-    ).where(crm_opportunities.c.stage.in_(open_stages))
+        func.coalesce(func.sum(opportunity_amount_cad_expression()), 0).label("value"),
+    ).where(crm_opportunities.c.stage.in_(OPEN_OPPORTUNITY_STAGES))
     with get_connection() as connection:
         row = connection.execute(statement).mappings().first()
     return {"count": int(row["count"]), "value": Decimal(row["value"] or 0)}
@@ -178,9 +192,11 @@ def recently_closed_opportunities(limit: int = 10) -> list[dict]:
             crm_opportunities.c.stage,
             crm_opportunities.c.amount,
             crm_opportunities.c.currency,
+            crm_opportunities.c.conversion_rate_to_cad,
+            opportunity_amount_cad_expression().label("amount_cad"),
             crm_opportunities.c.close_date,
             account.c.company_name.label("account_name"),
-            owner.c.full_name.label("owner_name"),
+            owner.c.full_name.label("salesperson_name"),
         )
         .select_from(
             crm_opportunities

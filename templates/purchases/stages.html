@@ -1,15 +1,15 @@
 {% extends "base.html" %}
 
-{% block title %}Stages | {{ config.APP_NAME }}{% endblock %}
+{% block title %}Purchase Stages | {{ config.APP_NAME }}{% endblock %}
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
   <div>
-    <p class="text-uppercase small fw-semibold text-body-secondary mb-1">Pipeline Settings</p>
-    <h1 class="h3 mb-0">Stage configuration</h1>
-    <p class="text-body-secondary mb-0 mt-2">Opportunity stages are standardized to Prospecting, Negotiation, Closed Won, and Closed Lost.</p>
+    <p class="text-uppercase small fw-semibold text-body-secondary mb-1">Purchases</p>
+    <h1 class="h3 mb-0">Purchase stage configuration</h1>
+    <p class="text-body-secondary mb-0 mt-2">Purchases are standardized to Prospecting, Negotiation, Closed Won, and Closed Lost.</p>
   </div>
-  <a class="btn btn-outline-secondary" href="{{ url_for('opportunities.pipeline_view') }}">Back to Pipeline</a>
+  <a class="btn btn-outline-secondary" href="{{ url_for('purchases.pipeline_view') }}">Back to Purchase Pipeline</a>
 </div>
 
 <div class="row g-3">
