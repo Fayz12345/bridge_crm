@@ -31,6 +31,8 @@ from bridge_crm.crm.segments.queries import (
     replace_account_product_interests,
     replace_account_tags,
 )
+from bridge_crm.crm.communications.whatsapp_bulk import render_bulk_whatsapp_page, send_bulk_whatsapp
+from bridge_crm.crm.communications.whatsapp_thread import conversation_context, send_entity_whatsapp
 from bridge_crm.integrations.email_sender import send_email, smtp_configured
 
 accounts_bp = Blueprint(
@@ -202,14 +204,13 @@ def _render_bulk_whatsapp_template(
     body_text: str = "",
 ):
     rows = _account_bulk_rows(accounts)
-    return render_template(
-        "communications/bulk_whatsapp.html",
+    return render_bulk_whatsapp_page(
         records=rows,
         return_to=return_to,
         body_text=body_text,
-        available_count=sum(1 for row in rows if row["whatsapp_number"]),
         entity_label="Accounts",
         compose_endpoint="accounts.bulk_whatsapp_view",
+        send_endpoint="accounts.send_bulk_whatsapp_view",
     )
 
 
@@ -298,11 +299,54 @@ def detail_view(account_id: int):
     custom_field_rows = get_custom_field_values(
         account, list_custom_fields("account", active_only=True)
     )
+    phone = None
+    for contact in contacts:
+        phone = contact.get("whatsapp_number") or _format_phone_number(
+            contact.get("phone_prefix"), contact.get("phone")
+        )
+        if phone:
+            break
+    if not phone:
+        phone = _format_phone_number(account.get("phone_prefix"), account.get("phone"))
+    wa_ctx = conversation_context("account", account_id, phone)
     return render_template(
         "accounts/detail.html",
         account=account,
         contacts=contacts,
         custom_field_rows=custom_field_rows,
+        whatsapp_send_url=url_for("accounts.send_whatsapp_view", account_id=account_id),
+        **wa_ctx,
+    )
+
+
+@accounts_bp.route("/<int:account_id>/whatsapp", methods=["POST"])
+@login_required
+def send_whatsapp_view(account_id: int):
+    account = get_account(account_id)
+    if not account:
+        flash("Account not found.", "danger")
+        return redirect(url_for("accounts.list_view"))
+
+    contacts = list_contacts_for_account(account_id)
+    phone = None
+    for contact in contacts:
+        phone = contact.get("whatsapp_number") or _format_phone_number(
+            contact.get("phone_prefix"), contact.get("phone")
+        )
+        if phone:
+            break
+    if not phone:
+        phone = _format_phone_number(account.get("phone_prefix"), account.get("phone"))
+
+    return send_entity_whatsapp(
+        related_type="account",
+        related_id=account_id,
+        phone=phone,
+        message_type=request.form.get("message_type", "session"),
+        body_text=request.form.get("body_text", ""),
+        contact_name=account.get("company_name") or account.get("contact_name") or "there",
+        redirect_endpoint="accounts.detail_view",
+        redirect_kwargs={"account_id": account_id},
     )
 
 
@@ -534,6 +578,32 @@ def bulk_whatsapp_view():
         return_to=return_to,
         body_text=body_text,
     )
+
+
+@accounts_bp.route("/bulk-whatsapp/send", methods=["POST"])
+@login_required
+def send_bulk_whatsapp_view():
+    account_ids = _parse_multi_ints(request.form.getlist("selected_ids"))
+    return_to = _safe_return_to(request.form.get("return_to"))
+    body_text = request.form.get("body_text", "").strip()
+
+    if not account_ids:
+        flash("Select at least one account for bulk WhatsApp.", "warning")
+        return redirect(return_to)
+
+    accounts = get_accounts_by_ids(account_ids)
+    if not accounts:
+        flash("The selected accounts could not be found.", "danger")
+        return redirect(return_to)
+
+    rows = _account_bulk_rows(accounts)
+    send_bulk_whatsapp(
+        records=rows,
+        body_text=body_text,
+        related_type="account",
+        return_to=return_to,
+    )
+    return redirect(return_to)
 
 
 @accounts_bp.route("/<int:account_id>/delete", methods=["POST"])

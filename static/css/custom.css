@@ -1,3 +1,16 @@
+.pipeline-card {
+  cursor: grab;
+  transition: box-shadow 0.2s;
+}
+
+.pipeline-card:active {
+  cursor: grabbing;
+}
+
+.sortable-ghost {
+  opacity: 0.45;
+}
+
 :root {
   --crm-navy: #0A2540;
   --crm-navy-light: #0F234C;

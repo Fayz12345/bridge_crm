@@ -25,8 +25,30 @@ permissions and database credentials.
 - Activity timeline and notifications
 - Role-based access control (admin, manager, rep)
 - Public lead capture API with CORS and rate limiting
+- WhatsApp via **Wati** or Meta Cloud API (templates, session replies, webhooks) — see `Wati_WhatsApp_Integration.md`
 
 ## Local development setup
+
+### Quick start (no Docker or system PostgreSQL)
+
+From the parent of this repo (e.g. `/var/www/html` when the project lives at `bridge_crm/`):
+
+```bash
+cd bridge_crm
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+cd ..
+PYTHONPATH=. bridge_crm/.venv/bin/python bridge_crm/scripts/run_local.py
+```
+
+Open http://127.0.0.1:5000/ and sign in with:
+
+- **Email:** `admin@example.com`
+- **Password:** `local-admin-pass`
+
+The script starts an embedded PostgreSQL instance under `bridge_crm/data/pgdata/`, bootstraps the schema, seeds an admin user on first run, and starts Flask.
+
+### Manual setup (your own PostgreSQL)
 
 ```bash
 python3 -m venv ~/crm-env
@@ -54,8 +76,8 @@ cp .env.example .env
 Bootstrap the schema and seed an admin user:
 
 ```bash
-python -m bridge_crm.scripts.bootstrap_db
-python -m bridge_crm.scripts.seed_admin \
+PYTHONPATH=/path/to/parent python -m bridge_crm.scripts.bootstrap_db
+PYTHONPATH=/path/to/parent python -m bridge_crm.scripts.seed_admin \
   --email admin@example.com \
   --full-name "Dev Admin" \
   --password "your-12-char-password"
@@ -64,7 +86,7 @@ python -m bridge_crm.scripts.seed_admin \
 Run the dev server:
 
 ```bash
-flask --app bridge_crm.wsgi:app run --debug
+PYTHONPATH=/path/to/parent flask --app bridge_crm.wsgi:app run --debug
 ```
 
 ## Configuration

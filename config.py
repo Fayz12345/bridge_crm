@@ -63,6 +63,19 @@ class Settings:
     document_footer_text: str
     document_tax_rate: float
     log_level: str
+    whatsapp_provider: str
+    whatsapp_access_token: str
+    whatsapp_phone_number_id: str
+    whatsapp_business_account_id: str
+    whatsapp_api_version: str
+    whatsapp_default_template: str
+    whatsapp_default_template_language: str
+    whatsapp_webhook_verify_token: str
+    wati_api_endpoint: str
+    wati_access_token: str
+    wati_channel_number: str
+    wati_template_param_names: str
+    wati_webhook_secret: str
 
     def to_flask_config(self) -> dict[str, object]:
         return {
@@ -89,6 +102,19 @@ class Settings:
             "DOCUMENT_FOOTER_TEXT": self.document_footer_text,
             "DOCUMENT_TAX_RATE": self.document_tax_rate,
             "LOG_LEVEL": self.log_level,
+            "WHATSAPP_PROVIDER": self.whatsapp_provider,
+            "WHATSAPP_ACCESS_TOKEN": self.whatsapp_access_token,
+            "WHATSAPP_PHONE_NUMBER_ID": self.whatsapp_phone_number_id,
+            "WHATSAPP_BUSINESS_ACCOUNT_ID": self.whatsapp_business_account_id,
+            "WHATSAPP_API_VERSION": self.whatsapp_api_version,
+            "WHATSAPP_DEFAULT_TEMPLATE": self.whatsapp_default_template,
+            "WHATSAPP_DEFAULT_TEMPLATE_LANGUAGE": self.whatsapp_default_template_language,
+            "WHATSAPP_WEBHOOK_VERIFY_TOKEN": self.whatsapp_webhook_verify_token,
+            "WATI_API_ENDPOINT": self.wati_api_endpoint,
+            "WATI_ACCESS_TOKEN": self.wati_access_token,
+            "WATI_CHANNEL_NUMBER": self.wati_channel_number,
+            "WATI_TEMPLATE_PARAM_NAMES": self.wati_template_param_names,
+            "WATI_WEBHOOK_SECRET": self.wati_webhook_secret,
         }
 
 
@@ -154,4 +180,21 @@ def get_settings() -> Settings:
         ),
         document_tax_rate=float(os.getenv("DOCUMENT_TAX_RATE", "0")),
         log_level=os.getenv("LOG_LEVEL", "INFO"),
+        whatsapp_provider=os.getenv("WHATSAPP_PROVIDER", "wati").strip().lower(),
+        whatsapp_access_token=os.getenv("WHATSAPP_ACCESS_TOKEN", ""),
+        whatsapp_phone_number_id=os.getenv("WHATSAPP_PHONE_NUMBER_ID", ""),
+        whatsapp_business_account_id=os.getenv("WHATSAPP_BUSINESS_ACCOUNT_ID", ""),
+        whatsapp_api_version=os.getenv("WHATSAPP_API_VERSION", "v21.0"),
+        whatsapp_default_template=os.getenv("WHATSAPP_DEFAULT_TEMPLATE", ""),
+        whatsapp_default_template_language=os.getenv(
+            "WHATSAPP_DEFAULT_TEMPLATE_LANGUAGE", "en_US"
+        ),
+        whatsapp_webhook_verify_token=os.getenv("WHATSAPP_WEBHOOK_VERIFY_TOKEN", ""),
+        wati_api_endpoint=os.getenv("WATI_API_ENDPOINT", ""),
+        wati_access_token=os.getenv("WATI_ACCESS_TOKEN", ""),
+        wati_channel_number=os.getenv("WATI_CHANNEL_NUMBER", ""),
+        wati_template_param_names=os.getenv(
+            "WATI_TEMPLATE_PARAM_NAMES", "name,rep_name,message"
+        ),
+        wati_webhook_secret=os.getenv("WATI_WEBHOOK_SECRET", ""),
     )

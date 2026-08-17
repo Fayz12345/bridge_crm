@@ -32,6 +32,8 @@ from bridge_crm.crm.segments.queries import (
     replace_lead_product_interests,
     replace_lead_tags,
 )
+from bridge_crm.crm.communications.whatsapp_bulk import render_bulk_whatsapp_page, send_bulk_whatsapp
+from bridge_crm.crm.communications.whatsapp_thread import conversation_context, send_entity_whatsapp
 from bridge_crm.integrations.email_sender import send_email, smtp_configured
 
 leads_bp = Blueprint(
@@ -87,6 +89,16 @@ def _safe_return_to(value: str | None) -> str:
 def _current_list_url() -> str:
     full_path = request.full_path.rstrip("?")
     return full_path or request.path
+
+
+def _invalid_phone_prefix(form_data) -> bool:
+    phone_prefix = form_data.get("phone_prefix", "").strip()
+    phone = form_data.get("phone", "").strip()
+    if not phone_prefix:
+        return False
+    if phone and phone_prefix == phone:
+        return False
+    return len(phone_prefix) > 8
 
 
 def _format_phone_number(phone_prefix: str | None, phone: str | None) -> str | None:
@@ -158,14 +170,13 @@ def _render_bulk_whatsapp_template(
     body_text: str = "",
 ):
     rows = _lead_bulk_rows(leads)
-    return render_template(
-        "communications/bulk_whatsapp.html",
+    return render_bulk_whatsapp_page(
         records=rows,
         return_to=return_to,
         body_text=body_text,
-        available_count=sum(1 for row in rows if row["whatsapp_number"]),
         entity_label="Leads",
         compose_endpoint="leads.bulk_whatsapp_view",
+        send_endpoint="leads.send_bulk_whatsapp_view",
     )
 
 
@@ -229,6 +240,8 @@ def create_view():
             "last_name", ""
         ).strip():
             flash("First and last name are required.", "danger")
+        elif _invalid_phone_prefix(request.form):
+            flash("Phone prefix must be a short country/area prefix such as +1.", "danger")
         else:
             payload = _build_payload(request.form)
             payload["custom_fields"] = extract_custom_field_values(request.form, custom_field_definitions)
@@ -272,11 +285,36 @@ def detail_view(lead_id: int):
     custom_field_rows = get_custom_field_values(
         lead, list_custom_fields("lead", active_only=True)
     )
+    phone = _format_phone_number(lead.get("phone_prefix"), lead.get("phone"))
+    wa_ctx = conversation_context("lead", lead_id, phone)
     return render_template(
         "leads/detail.html",
         lead=lead,
         activities=activities,
         custom_field_rows=custom_field_rows,
+        whatsapp_send_url=url_for("leads.send_whatsapp_view", lead_id=lead_id),
+        **wa_ctx,
+    )
+
+
+@leads_bp.route("/<int:lead_id>/whatsapp", methods=["POST"])
+@login_required
+def send_whatsapp_view(lead_id: int):
+    lead = get_lead(lead_id)
+    if not lead:
+        flash("Lead not found.", "danger")
+        return redirect(url_for("leads.list_view"))
+
+    phone = _format_phone_number(lead.get("phone_prefix"), lead.get("phone"))
+    return send_entity_whatsapp(
+        related_type="lead",
+        related_id=lead_id,
+        phone=phone,
+        message_type=request.form.get("message_type", "session"),
+        body_text=request.form.get("body_text", ""),
+        contact_name=f"{lead.get('first_name') or ''} {lead.get('last_name') or ''}".strip(),
+        redirect_endpoint="leads.detail_view",
+        redirect_kwargs={"lead_id": lead_id},
     )
 
 
@@ -307,6 +345,8 @@ def edit_view(lead_id: int):
             "last_name", ""
         ).strip():
             flash("First and last name are required.", "danger")
+        elif _invalid_phone_prefix(request.form):
+            flash("Phone prefix must be a short country/area prefix such as +1.", "danger")
         else:
             payload = _build_payload(request.form)
             payload["custom_fields"] = extract_custom_field_values(request.form, custom_field_definitions)
@@ -448,6 +488,32 @@ def bulk_whatsapp_view():
         return_to=return_to,
         body_text=body_text,
     )
+
+
+@leads_bp.route("/bulk-whatsapp/send", methods=["POST"])
+@login_required
+def send_bulk_whatsapp_view():
+    lead_ids = _parse_multi_ints(request.form.getlist("selected_ids"))
+    return_to = _safe_return_to(request.form.get("return_to"))
+    body_text = request.form.get("body_text", "").strip()
+
+    if not lead_ids:
+        flash("Select at least one lead for bulk WhatsApp.", "warning")
+        return redirect(return_to)
+
+    leads = get_leads_by_ids(lead_ids)
+    if not leads:
+        flash("The selected leads could not be found.", "danger")
+        return redirect(return_to)
+
+    rows = _lead_bulk_rows(leads)
+    send_bulk_whatsapp(
+        records=rows,
+        body_text=body_text,
+        related_type="lead",
+        return_to=return_to,
+    )
+    return redirect(return_to)
 
 
 @leads_bp.route("/<int:lead_id>/convert", methods=["POST"])

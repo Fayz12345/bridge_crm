@@ -1,0 +1,59 @@
+<div class="crm-card mt-3" id="whatsapp-thread">
+  <div class="card-body">
+    <div class="d-flex justify-content-between align-items-center mb-3 pb-2" style="border-bottom:2px solid var(--crm-teal)">
+      <h2 class="h5 mb-0">WhatsApp via Wati</h2>
+      <span class="badge text-bg-light text-uppercase">{{ whatsapp_provider or "off" }}</span>
+    </div>
+
+    {% if not whatsapp_api_ready %}
+    <div class="alert alert-info mb-0">
+      Wati is not configured. Set <code>WHATSAPP_PROVIDER=wati</code> and your Wati credentials in <code>.env</code>.
+      See <code>Wati_WhatsApp_Integration.md</code>.
+    </div>
+    {% else %}
+    <p class="small text-body-secondary mb-3">
+      Number: <strong>{{ whatsapp_phone or "—" }}</strong>
+      {% if whatsapp_default_template %}
+      · Template: <code>{{ whatsapp_default_template }}</code>
+      {% endif %}
+    </p>
+
+    <div class="border rounded-3 p-3 mb-3 bg-body-tertiary" style="max-height:320px;overflow-y:auto">
+      {% for msg in whatsapp_messages %}
+      <div class="mb-2 {% if msg.direction == 'outbound' %}text-end{% endif %}">
+        <div class="d-inline-block text-start px-3 py-2 rounded-3 {% if msg.direction == 'outbound' %}bg-white border{% else %}bg-success-subtle{% endif %}" style="max-width:85%">
+          <div class="small text-body-secondary mb-1">
+            {{ msg.direction|title }}
+            · {{ msg.message_type }}
+            · {{ msg.status }}
+            {% if msg.created_at %}· {{ msg.created_at.strftime("%Y-%m-%d %H:%M") }}{% endif %}
+          </div>
+          <div style="white-space:pre-wrap">{{ msg.body or "" }}</div>
+        </div>
+      </div>
+      {% else %}
+      <p class="text-body-secondary mb-0 text-center py-3">No WhatsApp messages yet.</p>
+      {% endfor %}
+    </div>
+
+    <form method="post" action="{{ whatsapp_send_url }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="mb-2">
+        <label class="form-label small" for="whatsapp_body">Message</label>
+        <textarea class="form-control" id="whatsapp_body" name="body_text" rows="3" required placeholder="Type a reply or template body…"></textarea>
+      </div>
+      <div class="d-flex flex-wrap gap-2">
+        <button class="btn btn-success btn-sm" type="submit" name="message_type" value="session">
+          <span class="material-symbols-outlined" style="font-size:16px">chat</span> Send session reply
+        </button>
+        <button class="btn btn-outline-success btn-sm" type="submit" name="message_type" value="template">
+          <span class="material-symbols-outlined" style="font-size:16px">campaign</span> Send template
+        </button>
+      </div>
+      <div class="form-text mt-2">
+        Session replies only work within 24 hours of the contact’s last message. Use template for cold outreach.
+      </div>
+    </form>
+    {% endif %}
+  </div>
+</div>

@@ -40,6 +40,11 @@ def index():
     product_rows = products_sold_report()
     product_tots = products_sold_totals(product_rows)
 
+    pipeline_rows = pipeline_breakdown()
+    stage_labels = {
+        row["stage"]: row["stage"].replace("_", " ").title() for row in pipeline_rows
+    }
+
     return render_template(
         "reports/index.html",
         opp_rows=opp_rows,
@@ -53,6 +58,14 @@ def index():
         accounts_open=accounts["open"],
         product_rows=product_rows,
         product_totals=product_tots,
+        pipeline_rows=pipeline_rows,
+        chart_pipeline_labels=[stage_labels.get(row["stage"], row["stage"]) for row in pipeline_rows],
+        chart_pipeline_counts=[int(row["count"]) for row in pipeline_rows],
+        chart_pipeline_values=[float(row["amount_cad"] or 0) for row in pipeline_rows],
+        chart_lead_labels=[src["source"].replace("_", " ").title() for src in lead_sources],
+        chart_lead_counts=[int(src["count"]) for src in lead_sources],
+        chart_forecast_labels=[row["forecast_month"] for row in forecast_rows],
+        chart_forecast_weighted=[float(row["weighted_amount"] or 0) for row in forecast_rows],
     )
 
 

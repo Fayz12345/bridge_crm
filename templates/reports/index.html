@@ -17,6 +17,33 @@
   </div>
 </div>
 
+<div class="row g-3 mb-4">
+  <div class="col-lg-6">
+    <div class="crm-card h-100">
+      <div class="card-body">
+        <h2 class="h6 mb-3">Pipeline by Stage</h2>
+        <canvas id="chart-pipeline" height="220" aria-label="Pipeline value by stage"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="crm-card h-100">
+      <div class="card-body">
+        <h2 class="h6 mb-3">Leads by Source</h2>
+        <canvas id="chart-leads" height="220" aria-label="Lead count by source"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="col-12">
+    <div class="crm-card">
+      <div class="card-body">
+        <h2 class="h6 mb-3">Weighted Sales Forecast by Month</h2>
+        <canvas id="chart-forecast" height="120" aria-label="Weighted forecast by month"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
 {# ------------------------------------------------------------------ #}
 {# 1. Opportunity Summary                                             #}
 {# ------------------------------------------------------------------ #}
@@ -314,4 +341,87 @@
     </div>
   </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.umd.min.js"></script>
+<script>
+(function () {
+  const teal = "#14B8A6";
+  const navy = "#0A2540";
+  const palette = ["#14B8A6", "#0A2540", "#3B82F6", "#F59E0B", "#EF4444", "#8B5CF6", "#64748B"];
+
+  const pipelineLabels = {{ chart_pipeline_labels | tojson }};
+  const pipelineValues = {{ chart_pipeline_values | tojson }};
+  const leadLabels = {{ chart_lead_labels | tojson }};
+  const leadCounts = {{ chart_lead_counts | tojson }};
+  const forecastLabels = {{ chart_forecast_labels | tojson }};
+  const forecastWeighted = {{ chart_forecast_weighted | tojson }};
+
+  if (pipelineLabels.length && document.getElementById("chart-pipeline")) {
+    new Chart(document.getElementById("chart-pipeline"), {
+      type: "bar",
+      data: {
+        labels: pipelineLabels,
+        datasets: [{
+          label: "CAD Value",
+          data: pipelineValues,
+          backgroundColor: teal,
+          borderRadius: 4,
+        }],
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: { callback: (v) => "CAD " + Number(v).toLocaleString() },
+          },
+        },
+      },
+    });
+  }
+
+  if (leadLabels.length && document.getElementById("chart-leads")) {
+    new Chart(document.getElementById("chart-leads"), {
+      type: "doughnut",
+      data: {
+        labels: leadLabels,
+        datasets: [{
+          data: leadCounts,
+          backgroundColor: palette,
+        }],
+      },
+      options: { responsive: true },
+    });
+  }
+
+  if (forecastLabels.length && document.getElementById("chart-forecast")) {
+    new Chart(document.getElementById("chart-forecast"), {
+      type: "line",
+      data: {
+        labels: forecastLabels,
+        datasets: [{
+          label: "Weighted Forecast (CAD)",
+          data: forecastWeighted,
+          borderColor: navy,
+          backgroundColor: "rgba(20, 184, 166, 0.15)",
+          fill: true,
+          tension: 0.3,
+        }],
+      },
+      options: {
+        responsive: true,
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: { callback: (v) => "CAD " + Number(v).toLocaleString() },
+          },
+        },
+      },
+    });
+  }
+})();
+</script>
 {% endblock %}

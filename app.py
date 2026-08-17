@@ -9,6 +9,8 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 
 from bridge_crm.config import Settings, get_settings
 from bridge_crm.api.lead_capture import lead_capture_bp
+from bridge_crm.api.whatsapp_webhook import whatsapp_webhook_bp
+from bridge_crm.api.wati_webhook import wati_webhook_bp
 from bridge_crm.crm.accounts.routes import accounts_bp
 from bridge_crm.crm.auth.queries import get_user_by_id
 from bridge_crm.crm.auth.routes import auth_bp
@@ -62,7 +64,11 @@ def create_app(settings: Settings | None = None) -> Flask:
     app.register_blueprint(notifications_bp)
     app.register_blueprint(users_bp)
     app.register_blueprint(lead_capture_bp)
+    app.register_blueprint(whatsapp_webhook_bp)
+    app.register_blueprint(wati_webhook_bp)
     csrf.exempt(lead_capture_bp)
+    csrf.exempt(whatsapp_webhook_bp)
+    csrf.exempt(wati_webhook_bp)
 
     @app.before_request
     def load_current_user() -> None:
@@ -91,7 +97,12 @@ def create_app(settings: Settings | None = None) -> Flask:
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
         response.headers["X-XSS-Protection"] = "1; mode=block"
-        if request.endpoint == "lead_capture.lead_form":
+        if request.endpoint and (
+            request.endpoint.startswith("whatsapp_webhook.")
+            or request.endpoint.startswith("wati_webhook.")
+        ):
+            response.headers.pop("X-Frame-Options", None)
+        elif request.endpoint == "lead_capture.lead_form":
             allowed_parents = app.config.get("LEAD_FORM_ALLOWED_PARENTS", [])
             if allowed_parents:
                 response.headers["Content-Security-Policy"] = (

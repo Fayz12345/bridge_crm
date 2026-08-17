@@ -30,11 +30,11 @@
         </div>
         <div class="col-md-2">
           <label class="form-label" for="phone_prefix">Prefix</label>
-          <input class="form-control" id="phone_prefix" name="phone_prefix" value="{{ form_data.phone_prefix or '+1' }}">
+          <input class="form-control" id="phone_prefix" name="phone_prefix" maxlength="8" autocomplete="tel-country-code" placeholder="+1" value="{{ form_data.phone_prefix or '+1' }}">
         </div>
         <div class="col-md-3">
           <label class="form-label" for="phone">Phone</label>
-          <input class="form-control" id="phone" name="phone" value="{{ form_data.phone or '' }}">
+          <input class="form-control" id="phone" name="phone" autocomplete="tel-national" placeholder="5551234567" value="{{ form_data.phone or '' }}">
         </div>
         <div class="col-md-3">
           <label class="form-label" for="company_name">Company</label>
