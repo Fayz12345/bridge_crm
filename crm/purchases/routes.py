@@ -1,6 +1,6 @@
 from decimal import Decimal, InvalidOperation
 
-from flask import Blueprint, flash, g, redirect, render_template, request, url_for
+from flask import Blueprint, flash, g, jsonify, redirect, render_template, request, url_for
 
 from bridge_crm.crm.activities.queries import list_activities, log_activity
 from bridge_crm.crm.auth.queries import list_assignable_users
@@ -283,29 +283,45 @@ def edit_view(purchase_id: int):
     )
 
 
+def _wants_json() -> bool:
+    requested = (request.headers.get("X-Requested-With") or "").lower()
+    if requested == "xmlhttprequest":
+        return True
+    return request.accept_mimetypes.best_match(["application/json", "text/html"]) == "application/json"
+
+
 @purchases_bp.route("/<int:purchase_id>/stage", methods=["POST"])
 @login_required
 def update_stage_view(purchase_id: int):
     purchase = get_purchase(purchase_id)
+    wants_json = _wants_json()
     if not purchase:
+        if wants_json:
+            return jsonify({"ok": False, "error": "Purchase not found."}), 404
         flash("Purchase not found.", "danger")
         return redirect(url_for("purchases.list_view"))
 
     target_stage = request.form.get("stage", "").strip()
     stage = get_purchase_stage(target_stage)
     if not stage:
+        if wants_json:
+            return jsonify({"ok": False, "error": "Invalid stage."}), 400
         flash("Invalid stage.", "danger")
         return redirect(url_for("purchases.pipeline_view"))
 
-    update_purchase_stage(purchase_id, stage["stage_key"])
-    log_activity(
-        "purchase",
-        purchase_id,
-        "stage_changed",
-        f"Purchase stage changed from {purchase['stage']} to {stage['stage_key']}.",
-        g.user["id"],
-        {"from": purchase["stage"], "to": stage["stage_key"]},
-    )
+    if purchase["stage"] != stage["stage_key"]:
+        update_purchase_stage(purchase_id, stage["stage_key"])
+        log_activity(
+            "purchase",
+            purchase_id,
+            "stage_changed",
+            f"Purchase stage changed from {purchase['stage']} to {stage['stage_key']}.",
+            g.user["id"],
+            {"from": purchase["stage"], "to": stage["stage_key"]},
+        )
+
+    if wants_json:
+        return jsonify({"ok": True, "stage": stage["stage_key"]})
     flash("Purchase stage updated.", "success")
     return redirect(url_for("purchases.pipeline_view"))
 

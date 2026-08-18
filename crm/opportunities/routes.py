@@ -2,7 +2,7 @@ import re
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
-from flask import Blueprint, abort, flash, g, redirect, render_template, request, send_file, url_for
+from flask import Blueprint, abort, flash, g, jsonify, redirect, render_template, request, send_file, url_for
 
 from bridge_crm.crm.activities.queries import list_activities, log_activity
 from bridge_crm.crm.auth.queries import (
@@ -437,29 +437,51 @@ def edit_view(opportunity_id: int):
     )
 
 
+def _wants_json() -> bool:
+    requested = (request.headers.get("X-Requested-With") or "").lower()
+    if requested == "xmlhttprequest":
+        return True
+    return request.accept_mimetypes.best_match(["application/json", "text/html"]) == "application/json"
+
+
 @opportunities_bp.route("/<int:opportunity_id>/stage", methods=["POST"])
 @login_required
 def update_stage_view(opportunity_id: int):
     opportunity = get_opportunity(opportunity_id)
+    wants_json = _wants_json()
     if not opportunity:
+        if wants_json:
+            return jsonify({"ok": False, "error": "Opportunity not found."}), 404
         flash("Opportunity not found.", "danger")
         return redirect(url_for("opportunities.list_view"))
 
     target_stage = request.form.get("stage", "").strip()
     stage = get_pipeline_stage(target_stage)
     if not stage:
+        if wants_json:
+            return jsonify({"ok": False, "error": "Invalid stage."}), 400
         flash("Invalid stage.", "danger")
         return redirect(url_for("opportunities.pipeline_view"))
 
-    update_opportunity_stage(opportunity_id, stage["stage_key"], stage["default_probability"])
-    log_activity(
-        "opportunity",
-        opportunity_id,
-        "stage_changed",
-        f"Opportunity stage changed from {opportunity['stage']} to {stage['stage_key']}.",
-        g.user["id"],
-        {"from": opportunity["stage"], "to": stage["stage_key"]},
-    )
+    if opportunity["stage"] != stage["stage_key"]:
+        update_opportunity_stage(opportunity_id, stage["stage_key"], stage["default_probability"])
+        log_activity(
+            "opportunity",
+            opportunity_id,
+            "stage_changed",
+            f"Opportunity stage changed from {opportunity['stage']} to {stage['stage_key']}.",
+            g.user["id"],
+            {"from": opportunity["stage"], "to": stage["stage_key"]},
+        )
+
+    if wants_json:
+        return jsonify(
+            {
+                "ok": True,
+                "stage": stage["stage_key"],
+                "probability": stage["default_probability"],
+            }
+        )
     flash("Opportunity stage updated.", "success")
     return redirect(url_for("opportunities.pipeline_view"))
 

@@ -5,31 +5,33 @@
 {% block content %}
 <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
   <div>
-    <p class="text-uppercase small fw-semibold text-body-secondary mb-1">Bulk WhatsApp</p>
+    <p class="text-uppercase small fw-semibold text-body-secondary mb-1">WhatsApp broadcast</p>
     <h1 class="h3 mb-1">{{ entity_label }}</h1>
     <p class="text-body-secondary mb-0">
-      {% if whatsapp_api_ready %}
-      Send approved Wati template messages server-side, or generate manual chat links.
+      {% if whatsapp_templates_ready %}
+      Send one approved Wati template to every selected recipient as a single campaign.
+      {% elif whatsapp_api_ready %}
+      Wati is connected, but set <code>WHATSAPP_DEFAULT_TEMPLATE</code> to enable broadcasts.
       {% else %}
       Prepare one message and open individual WhatsApp chats for the selected records.
       {% endif %}
     </p>
   </div>
-  <a class="btn btn-outline-secondary" href="{{ return_to }}"><span class="material-symbols-outlined">arrow_back</span> Back to {{ entity_label }}</a>
+  <a class="btn btn-outline-secondary" href="{{ return_to }}"><span class="material-symbols-outlined">arrow_back</span> Back</a>
 </div>
 
-{% if whatsapp_api_ready %}
+{% if whatsapp_templates_ready %}
 <div class="alert alert-success">
-  {% if whatsapp_provider == "wati" %}
-  Wati is configured. Bulk sends use the <strong>{{ default_template }}</strong> template.
-  {% else %}
-  WhatsApp provider <strong>{{ whatsapp_provider }}</strong> is configured. Bulk sends use the <strong>{{ default_template }}</strong> template.
-  {% endif %}
+  Wati is ready. Broadcasts use template <strong>{{ template_name or default_template }}</strong> and appear as one campaign in Wati.
+</div>
+{% elif whatsapp_api_ready %}
+<div class="alert alert-warning">
+  Wati credentials are set, but no default template is configured. Session replies still work on individual records.
 </div>
 {% else %}
 <div class="alert alert-info">
   Wati is not configured. This workflow opens <code>wa.me</code> links in your browser.
-  See <code>Wati_WhatsApp_Integration.md</code> to enable server-side sends.
+  Set <code>WHATSAPP_PROVIDER=wati</code>, <code>WATI_API_ENDPOINT</code>, <code>WATI_ACCESS_TOKEN</code>, and <code>WHATSAPP_DEFAULT_TEMPLATE</code>.
 </div>
 {% endif %}
 
@@ -40,16 +42,32 @@
         <form method="post" action="{{ url_for(compose_endpoint) }}">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <input type="hidden" name="return_to" value="{{ return_to }}">
+          {% if entity %}
+          <input type="hidden" name="entity" value="{{ entity }}">
+          {% endif %}
           {% for record in records %}
           <input type="hidden" name="selected_ids" value="{{ record.id }}">
           {% endfor %}
 
           <div class="mb-3">
-            <label class="form-label" for="body_text">WhatsApp Message</label>
-            <textarea class="form-control" id="body_text" name="body_text" rows="12" required>{{ body_text or '' }}</textarea>
-            {% if whatsapp_api_ready %}
+            <label class="form-label" for="broadcast_name">Campaign name</label>
+            <input class="form-control" id="broadcast_name" name="broadcast_name" value="{{ broadcast_name or '' }}" placeholder="August restock update">
+            <div class="form-text">Shown as the Wati broadcast name. Leave blank to auto-generate.</div>
+          </div>
+          {% if whatsapp_templates_ready %}
+          <div class="mb-3">
+            <label class="form-label" for="template_name">Wati template</label>
+            <input class="form-control" id="template_name" name="template_name" value="{{ template_name or default_template }}">
+            <div class="form-text">Must match an approved template in Wati. Parameters: name, rep name, message.</div>
+          </div>
+          {% endif %}
+
+          <div class="mb-3">
+            <label class="form-label" for="body_text">Message</label>
+            <textarea class="form-control" id="body_text" name="body_text" rows="10" required>{{ body_text or '' }}</textarea>
+            {% if whatsapp_templates_ready %}
             <div class="form-text">
-              Used as the message body parameter in template <strong>{{ default_template }}</strong>.
+              Fills the message body parameter on template <strong>{{ template_name or default_template }}</strong>. Each recipient still gets their own name.
             </div>
             {% else %}
             <div class="form-text">Update the message and click Generate Links to refresh the chat links below.</div>
@@ -58,12 +76,12 @@
 
           <div class="d-flex flex-wrap gap-2">
             <button class="btn btn-outline-primary" type="submit" name="action" value="preview">
-              <span class="material-symbols-outlined">link</span> Generate Links
+              <span class="material-symbols-outlined">link</span> Refresh preview
             </button>
-            {% if whatsapp_api_ready %}
+            {% if whatsapp_templates_ready %}
             <button class="btn btn-success" type="submit" formaction="{{ url_for(send_endpoint) }}" name="action" value="send"
-              data-confirm="Send Wati template messages to {{ available_count }} recipient(s) with numbers on file?">
-              <span class="material-symbols-outlined">send</span> Send via Wati
+              data-confirm="Send Wati broadcast to {{ available_count }} recipient(s) with numbers on file?">
+              <span class="material-symbols-outlined">campaign</span> Send broadcast via Wati
             </button>
             {% endif %}
             <a class="btn btn-outline-secondary" href="{{ return_to }}">Cancel</a>

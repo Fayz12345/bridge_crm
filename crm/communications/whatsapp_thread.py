@@ -1,7 +1,10 @@
-from flask import flash, g, redirect, url_for
+from flask import abort, flash, g, redirect, url_for
 
 from bridge_crm.config import get_settings
+from bridge_crm.crm.accounts.queries import get_account, list_contacts_for_account
 from bridge_crm.crm.activities.queries import log_activity
+from bridge_crm.crm.leads.queries import get_lead
+from bridge_crm.crm.whatsapp.inbound import sync_conversation_from_provider
 from bridge_crm.crm.whatsapp.queries import create_whatsapp_message, list_whatsapp_messages
 from bridge_crm.integrations.whatsapp import (
     WhatsAppAPIError,
@@ -10,19 +13,78 @@ from bridge_crm.integrations.whatsapp import (
     provider_name,
     send_outreach_template,
     send_session_message,
+    templates_ready,
     whatsapp_configured,
 )
 
 
-def conversation_context(related_type: str, related_id: int, phone: str | None) -> dict:
+def conversation_context(
+    related_type: str,
+    related_id: int,
+    phone: str | None,
+    *,
+    sync: bool = False,
+    min_interval_seconds: int = 0,
+) -> dict:
+    if sync:
+        sync_conversation_from_provider(
+            related_type,
+            related_id,
+            phone,
+            min_interval_seconds=min_interval_seconds,
+        )
     messages = list(reversed(list_whatsapp_messages(related_type, related_id)))
     return {
         "whatsapp_messages": messages,
         "whatsapp_phone": phone or "",
         "whatsapp_api_ready": whatsapp_configured(),
+        "whatsapp_templates_ready": templates_ready(),
         "whatsapp_provider": provider_name(),
         "whatsapp_default_template": get_settings().whatsapp_default_template,
+        "whatsapp_messages_url": url_for(
+            "communications.thread_messages_view",
+            related_type=related_type,
+            related_id=related_id,
+        ),
     }
+
+
+def resolve_thread_phone(related_type: str, related_id: int) -> str | None:
+    if related_type == "lead":
+        lead = get_lead(related_id)
+        if not lead:
+            return None
+        return _format_phone(lead.get("phone_prefix"), lead.get("phone"))
+    if related_type == "account":
+        account = get_account(related_id)
+        if not account:
+            return None
+        contacts = list_contacts_for_account(related_id)
+        for contact in contacts:
+            phone = contact.get("whatsapp_number") or _format_phone(
+                contact.get("phone_prefix"), contact.get("phone")
+            )
+            if phone:
+                return phone
+        return _format_phone(account.get("phone_prefix"), account.get("phone"))
+    return None
+
+
+def require_thread_entity(related_type: str, related_id: int) -> str | None:
+    phone = resolve_thread_phone(related_type, related_id)
+    if related_type == "lead" and not get_lead(related_id):
+        abort(404)
+    if related_type == "account" and not get_account(related_id):
+        abort(404)
+    return phone
+
+
+def _format_phone(phone_prefix: str | None, phone: str | None) -> str | None:
+    raw = f"{phone_prefix or ''}{phone or ''}".strip()
+    if not raw:
+        return None
+    normalized = "".join(ch for ch in raw if ch.isdigit() or ch == "+")
+    return normalized or None
 
 
 def send_entity_whatsapp(

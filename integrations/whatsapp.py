@@ -26,6 +26,12 @@ def whatsapp_configured() -> bool:
     return meta_whatsapp.whatsapp_configured()
 
 
+def templates_ready() -> bool:
+    if provider_name() == "wati":
+        return wati.wati_templates_ready()
+    return meta_whatsapp.whatsapp_configured()
+
+
 def normalize_whatsapp_number(phone: str | None) -> str | None:
     if provider_name() == "wati":
         return wati.normalize_whatsapp_number(phone)
@@ -83,6 +89,7 @@ def send_outreach_template(
     message_body: str,
     template_name: str | None = None,
     language_code: str | None = None,
+    broadcast_name: str | None = None,
 ) -> dict[str, Any]:
     try:
         if provider_name() == "wati":
@@ -92,6 +99,7 @@ def send_outreach_template(
                 rep_name=rep_name,
                 message_body=message_body,
                 template_name=template_name,
+                broadcast_name=broadcast_name,
             )
         return meta_whatsapp.send_outreach_template(
             to_number,
@@ -103,6 +111,37 @@ def send_outreach_template(
         )
     except (wati.WatiAPIError, meta_whatsapp.WhatsAppAPIError) as exc:
         raise WhatsAppAPIError(str(exc), status_code=getattr(exc, "status_code", None), payload=getattr(exc, "payload", None)) from exc
+
+
+def send_template_broadcast(
+    receivers: list[dict[str, Any]],
+    *,
+    template_name: str | None = None,
+    broadcast_name: str | None = None,
+) -> dict[str, Any]:
+    try:
+        if provider_name() != "wati":
+            raise WhatsAppAPIError("Broadcast campaigns are available when WHATSAPP_PROVIDER=wati.")
+        return wati.send_template_broadcast(
+            receivers,
+            template_name=template_name,
+            broadcast_name=broadcast_name,
+        )
+    except (wati.WatiAPIError, meta_whatsapp.WhatsAppAPIError) as exc:
+        raise WhatsAppAPIError(str(exc), status_code=getattr(exc, "status_code", None), payload=getattr(exc, "payload", None)) from exc
+
+
+def get_conversation_messages(whatsapp_number: str) -> dict[str, Any]:
+    try:
+        if provider_name() != "wati":
+            return {}
+        return wati.get_messages(whatsapp_number)
+    except (wati.WatiAPIError, meta_whatsapp.WhatsAppAPIError) as exc:
+        raise WhatsAppAPIError(
+            str(exc),
+            status_code=getattr(exc, "status_code", None),
+            payload=getattr(exc, "payload", None),
+        ) from exc
 
 
 def _extract_message_id(response: dict[str, Any]) -> str | None:

@@ -17,6 +17,16 @@ from bridge_crm.db.schema import (
 
 
 VALID_LEAD_STATUSES = {"new", "contacted", "qualified", "unqualified", "converted"}
+LEAD_STATUS_COLUMNS = [
+    {"status_key": "new", "display_name": "New"},
+    {"status_key": "contacted", "display_name": "Contacted"},
+    {"status_key": "qualified", "display_name": "Qualified"},
+    {"status_key": "unqualified", "display_name": "Unqualified"},
+    {"status_key": "converted", "display_name": "Converted", "locked": True},
+]
+MOVABLE_LEAD_STATUSES = tuple(
+    column["status_key"] for column in LEAD_STATUS_COLUMNS if not column.get("locked")
+)
 
 
 def _clean(value):
@@ -183,6 +193,28 @@ def convert_lead(
     )
     with get_connection() as connection:
         connection.execute(statement)
+
+
+def update_lead_status(lead_id: int, status: str) -> None:
+    statement = (
+        update(crm_leads)
+        .where(crm_leads.c.id == lead_id)
+        .values(status=status, updated_at=datetime.now(timezone.utc))
+    )
+    with get_connection() as connection:
+        connection.execute(statement)
+
+
+def leads_by_status() -> list[dict]:
+    owner = crm_users.alias("owner")
+    statement = (
+        select(crm_leads, owner.c.full_name.label("owner_name"))
+        .select_from(crm_leads.outerjoin(owner, crm_leads.c.owner_id == owner.c.id))
+        .order_by(crm_leads.c.status, crm_leads.c.created_at.desc(), crm_leads.c.id.desc())
+    )
+    with get_connection() as connection:
+        rows = connection.execute(statement).mappings().all()
+    return _attach_lead_segments([dict(row) for row in rows])
 
 
 def lead_status_counts() -> dict[str, int]:

@@ -1,63 +1,67 @@
 {% extends "base.html" %}
 
 {% block title %}Purchase Pipeline | {{ config.APP_NAME }}{% endblock %}
+{% block container_class %}container-fluid px-3 px-lg-4{% endblock %}
 
 {% block content %}
 <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
   <div>
     <p class="text-uppercase small fw-semibold text-body-secondary mb-1">Purchases</p>
-    <h1 class="h3 mb-1">Purchase stage board</h1>
-    <p class="text-body-secondary mb-0">Use the dropdown on each card to change stage.</p>
+    <h1 class="h3 mb-1">Purchase board</h1>
+    <p class="text-body-secondary mb-0">Drag cards between columns to update stage. Changes save immediately.</p>
   </div>
   <div class="d-flex gap-2">
+    <a class="btn btn-outline-secondary" href="{{ url_for('purchases.list_view') }}">List view</a>
     <a class="btn btn-outline-secondary" href="{{ url_for('purchases.stages_view') }}">Manage Stages</a>
     <a class="btn btn-primary" href="{{ url_for('purchases.create_view') }}"><span class="material-symbols-outlined">add</span> New Purchase</a>
   </div>
 </div>
 
-<div class="row g-3" data-pipeline-board>
-  {% for stage in stages %}
-  <div class="col-xl-3 col-md-6" data-pipeline-column data-stage="{{ stage.stage_key }}">
-    <div class="crm-card h-100">
-      <div class="card-body">
-        <div class="d-flex justify-content-between align-items-center mb-3 pb-2" style="border-bottom:2px solid var(--crm-teal)">
-          <div>
-            <div class="crm-field-label">Stage</div>
-            <h2 class="h5 mb-0">{{ stage.display_name }}</h2>
-          </div>
-          <span class="badge text-bg-light">{{ grouped.get(stage.stage_key, [])|length }}</span>
-        </div>
-        <div class="d-flex flex-column gap-2" data-pipeline-cards>
-          {% for purchase in grouped.get(stage.stage_key, []) %}
-          <div class="border rounded-3 p-3 bg-white pipeline-card" data-pipeline-card>
-            <a class="fw-semibold text-decoration-none" href="{{ url_for('purchases.detail_view', purchase_id=purchase.id) }}">{{ purchase.title }}</a>
-            <div class="small text-body-secondary mb-2">{{ purchase.account_name }}</div>
-            <div class="small mb-2">
-              {% if purchase.estimated_total %}{{ purchase.currency }} {{ "{:,.0f}".format(purchase.estimated_total) }}{% else %}No amount{% endif %}
+<div class="pipeline-status alert alert-success d-none" data-pipeline-status role="status"></div>
+
+<div class="pipeline-board-scroller">
+  <div class="pipeline-board" data-pipeline-board data-pipeline-field="stage">
+    {% for stage in stages %}
+    <div class="pipeline-column" data-pipeline-column data-stage="{{ stage.stage_key }}">
+      <div class="crm-card h-100 pipeline-column-card">
+        <div class="card-body d-flex flex-column">
+          <div class="d-flex justify-content-between align-items-center mb-3 pb-2 pipeline-column-header">
+            <div>
+              <div class="crm-field-label">Stage</div>
+              <h2 class="h5 mb-0">{{ stage.display_name }}</h2>
             </div>
-            {% if purchase.estimated_total %}
-            <div class="small text-body-secondary mb-2">CAD {{ "{:,.0f}".format(purchase.estimated_total_cad) }}</div>
-            {% endif %}
-            <div class="small text-body-secondary mb-2">Delivery: {{ purchase.expected_delivery_date.strftime("%Y-%m-%d") if purchase.expected_delivery_date else "—" }}</div>
-            <form method="post" action="{{ url_for('purchases.update_stage_view', purchase_id=purchase.id) }}" data-pipeline-stage-form>
-              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <div class="input-group input-group-sm">
-                <select class="form-select" name="stage" aria-label="Move purchase stage">
-                  {% for target in stages %}
-                  <option value="{{ target.stage_key }}" {% if target.stage_key == purchase.stage %}selected{% endif %}>{{ target.display_name }}</option>
-                  {% endfor %}
-                </select>
-                <button class="btn btn-outline-primary" type="submit">Move</button>
-              </div>
-            </form>
+            <span class="badge text-bg-light" data-pipeline-count>{{ grouped.get(stage.stage_key, [])|length }}</span>
           </div>
-          {% else %}
-          <p class="text-body-secondary mb-0 pipeline-empty">No purchases in this stage.</p>
-          {% endfor %}
+          <div class="pipeline-cards d-flex flex-column gap-2" data-pipeline-cards>
+            {% for purchase in grouped.get(stage.stage_key, []) %}
+            <div
+              class="border rounded-3 p-3 bg-white pipeline-card"
+              data-pipeline-card
+              data-id="{{ purchase.id }}"
+              data-update-url="{{ url_for('purchases.update_stage_view', purchase_id=purchase.id) }}"
+            >
+              <div class="d-flex gap-2">
+                <span class="pipeline-drag-handle material-symbols-outlined" data-pipeline-handle title="Drag to another stage">drag_indicator</span>
+                <div class="flex-grow-1 min-width-0">
+                  <a class="fw-semibold text-decoration-none" href="{{ url_for('purchases.detail_view', purchase_id=purchase.id) }}">{{ purchase.title }}</a>
+                  <div class="small text-body-secondary mb-2">{{ purchase.account_name }}</div>
+                  <div class="small mb-1">
+                    {% if purchase.estimated_total %}{{ purchase.currency }} {{ "{:,.0f}".format(purchase.estimated_total) }}{% else %}No amount{% endif %}
+                  </div>
+                  {% if purchase.estimated_total %}
+                  <div class="small text-body-secondary mb-1">CAD {{ "{:,.0f}".format(purchase.estimated_total_cad) }}</div>
+                  {% endif %}
+                  <div class="small text-body-secondary">Delivery: {{ purchase.expected_delivery_date.strftime("%Y-%m-%d") if purchase.expected_delivery_date else "—" }}</div>
+                </div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          <p class="text-body-secondary mb-0 mt-2 pipeline-empty" data-pipeline-empty {% if grouped.get(stage.stage_key) %}hidden{% endif %}>No purchases in this stage.</p>
         </div>
       </div>
     </div>
+    {% endfor %}
   </div>
-  {% endfor %}
 </div>
 {% endblock %}

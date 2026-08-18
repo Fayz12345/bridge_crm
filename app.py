@@ -11,6 +11,7 @@ from bridge_crm.config import Settings, get_settings
 from bridge_crm.api.lead_capture import lead_capture_bp
 from bridge_crm.api.whatsapp_webhook import whatsapp_webhook_bp
 from bridge_crm.api.wati_webhook import wati_webhook_bp
+from bridge_crm.crm.communications.routes import communications_bp
 from bridge_crm.crm.accounts.routes import accounts_bp
 from bridge_crm.crm.auth.queries import get_user_by_id
 from bridge_crm.crm.auth.routes import auth_bp
@@ -54,6 +55,7 @@ def create_app(settings: Settings | None = None) -> Flask:
     app.register_blueprint(auth_bp)
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(accounts_bp)
+    app.register_blueprint(communications_bp)
     app.register_blueprint(leads_bp)
     app.register_blueprint(opportunities_bp)
     app.register_blueprint(purchases_bp)

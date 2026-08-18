@@ -3,81 +3,262 @@
 {% block title %}Reports | {{ config.APP_NAME }}{% endblock %}
 
 {% block content %}
-<div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
+<div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-start gap-3 mb-4">
   <div>
     <p class="text-uppercase small fw-semibold text-body-secondary mb-1">Reports</p>
-    <h1 class="h3 mb-0">Sales Reports</h1>
-    <p class="text-body-secondary mb-0 mt-2">Opportunity-based totals are normalized to CAD using each deal's conversion rate.</p>
+    <h1 class="h3 mb-1">Sales analytics</h1>
+    <p class="text-body-secondary mb-0">Filter the dashboard, build a chart, and export the matching rows to CSV. Amounts are CAD.</p>
   </div>
-  <div class="d-flex flex-wrap gap-2">
-    <a class="btn btn-outline-primary btn-sm" href="{{ url_for('reports.opportunities_csv') }}"><span class="material-symbols-outlined" style="font-size:18px">download</span> Opportunities</a>
-    <a class="btn btn-outline-primary btn-sm" href="{{ url_for('reports.leads_csv') }}"><span class="material-symbols-outlined" style="font-size:18px">download</span> Leads</a>
-    <a class="btn btn-outline-primary btn-sm" href="{{ url_for('reports.products_csv') }}"><span class="material-symbols-outlined" style="font-size:18px">download</span> Products</a>
-    <a class="btn btn-outline-primary btn-sm" href="{{ url_for('reports.pipeline_csv') }}"><span class="material-symbols-outlined" style="font-size:18px">download</span> Pipeline</a>
+  <div class="dropdown">
+    <button class="btn btn-outline-primary" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+      <span class="material-symbols-outlined">download</span> Export CSV
+    </button>
+    <ul class="dropdown-menu dropdown-menu-end">
+      <li><a class="dropdown-item" href="{{ url_for('reports.opportunities_csv', **filter_params) }}">Opportunities</a></li>
+      <li><a class="dropdown-item" href="{{ url_for('reports.leads_csv', **filter_params) }}">Leads</a></li>
+      <li><a class="dropdown-item" href="{{ url_for('reports.products_csv', **filter_params) }}">Products</a></li>
+      <li><a class="dropdown-item" href="{{ url_for('reports.pipeline_csv', **filter_params) }}">Pipeline</a></li>
+    </ul>
   </div>
 </div>
 
+<form class="crm-card mb-4" method="get" id="report-filter-form">
+  <div class="card-body">
+    <input type="hidden" name="chart_dataset" value="{{ chart.dataset }}">
+    <input type="hidden" name="chart_group" value="{{ chart.group_by }}">
+    <input type="hidden" name="chart_metric" value="{{ chart.metric }}">
+    <input type="hidden" name="chart_type" value="{{ chart.chart_type }}">
+    <div class="row g-3 align-items-end">
+      <div class="col-md-4 col-lg-3">
+        <label class="form-label" for="range">Date range</label>
+        <select class="form-select" id="range" name="range" data-report-autosubmit>
+          {% for key, label in range_options %}
+          <option value="{{ key }}" {% if range_key == key %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-4 col-lg-3">
+        <label class="form-label" for="owner_id">Salesperson</label>
+        <select class="form-select" id="owner_id" name="owner_id" data-report-autosubmit>
+          <option value="">All people</option>
+          {% for owner in owners %}
+          <option value="{{ owner.id }}" {% if owner_id == owner.id %}selected{% endif %}>{{ owner.full_name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-4 col-lg-3">
+        <button class="btn btn-primary" type="submit">Apply</button>
+        <a class="btn btn-outline-secondary" href="{{ url_for('reports.index') }}">Reset</a>
+      </div>
+    </div>
+  </div>
+</form>
+
 <div class="row g-3 mb-4">
+  <div class="col-6 col-xl-2">
+    <div class="crm-card crm-metric h-100" style="border-left:3px solid var(--crm-teal)">
+      <div class="card-body">
+        <p class="small text-uppercase text-body-secondary fw-semibold mb-1">Open deals</p>
+        <div class="h3 mb-0">{{ opp_totals.open_count }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-xl-2">
+    <div class="crm-card crm-metric h-100" style="border-left:3px solid var(--crm-teal)">
+      <div class="card-body">
+        <p class="small text-uppercase text-body-secondary fw-semibold mb-1">Pipeline</p>
+        <div class="h3 mb-0">CAD ${{ "{:,.0f}".format(opp_totals.open_value or 0) }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-xl-2">
+    <div class="crm-card crm-metric h-100" style="border-left:3px solid #22c55e">
+      <div class="card-body">
+        <p class="small text-uppercase text-body-secondary fw-semibold mb-1">Won</p>
+        <div class="h3 mb-0 text-success">CAD ${{ "{:,.0f}".format(opp_totals.won_value or 0) }}</div>
+        <div class="small text-body-secondary">{{ opp_totals.won_count }} deals</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-xl-2">
+    <div class="crm-card crm-metric h-100" style="border-left:3px solid #f59e0b">
+      <div class="card-body">
+        <p class="small text-uppercase text-body-secondary fw-semibold mb-1">Win rate</p>
+        <div class="h3 mb-0">{{ opp_totals.win_rate }}%</div>
+        <div class="small text-body-secondary">{{ opp_totals.lost_count }} lost</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-xl-2">
+    <div class="crm-card crm-metric h-100" style="border-left:3px solid #3b82f6">
+      <div class="card-body">
+        <p class="small text-uppercase text-body-secondary fw-semibold mb-1">Leads</p>
+        <div class="h3 mb-0">{{ lead_totals.total }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-xl-2">
+    <div class="crm-card crm-metric h-100" style="border-left:3px solid #8b5cf6">
+      <div class="card-body">
+        <p class="small text-uppercase text-body-secondary fw-semibold mb-1">Lead conversion</p>
+        <div class="h3 mb-0">{{ lead_totals.conversion_rate }}%</div>
+        <div class="small text-body-secondary">{{ lead_totals.converted }} converted</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="crm-card mb-4" id="chart-builder">
+  <div class="card-body">
+    <div class="d-flex justify-content-between align-items-center mb-3 pb-2" style="border-bottom:2px solid var(--crm-teal)">
+      <div>
+        <h2 class="h5 mb-1">Build a chart</h2>
+        <p class="text-body-secondary small mb-0">Pick a dataset, grouping, metric, and chart type. The chart uses the filters above.</p>
+      </div>
+    </div>
+    <form method="get" class="row g-3 align-items-end mb-3" id="chart-builder-form">
+      <input type="hidden" name="range" value="{{ range_key }}">
+      {% if owner_id %}<input type="hidden" name="owner_id" value="{{ owner_id }}">{% endif %}
+      <div class="col-md-3">
+        <label class="form-label" for="chart_dataset">Data</label>
+        <select class="form-select" id="chart_dataset" name="chart_dataset" data-chart-dataset>
+          {% for key, conf in chart_datasets.items() %}
+          <option value="{{ key }}" {% if chart.dataset == key %}selected{% endif %}>{{ conf.label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label" for="chart_group">Group by</label>
+        <select class="form-select" id="chart_group" name="chart_group" data-chart-group>
+          {% for key, label in chart_datasets[chart.dataset].groups %}
+          <option value="{{ key }}" {% if chart.group_by == key %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label" for="chart_metric">Metric</label>
+        <select class="form-select" id="chart_metric" name="chart_metric" data-chart-metric>
+          {% for key, label in chart_datasets[chart.dataset].metrics %}
+          <option value="{{ key }}" {% if chart.metric == key %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label" for="chart_type">Chart type</label>
+        <select class="form-select" id="chart_type" name="chart_type">
+          {% for key, label in chart_types %}
+          <option value="{{ key }}" {% if chart.chart_type == key %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-12">
+        <button class="btn btn-primary" type="submit">Update chart</button>
+      </div>
+    </form>
+    <h3 class="h6 mb-3">{{ built_chart.title }}</h3>
+    <div class="report-chart-wrap">
+      <canvas id="chart-builder-canvas" aria-label="{{ built_chart.title }}"></canvas>
+      <div class="chart-empty d-none" data-chart-empty>No data for this combination yet.</div>
+    </div>
+  </div>
+</div>
+
+<nav class="report-nav mb-3" aria-label="Report sections">
+  <a href="#charts">Charts</a>
+  <a href="#opportunities">Opportunities</a>
+  <a href="#leads">Leads</a>
+  <a href="#forecast">Forecast</a>
+  <a href="#accounts">Accounts</a>
+  <a href="#products">Products</a>
+</nav>
+
+<div class="row g-3 mb-4" id="charts">
   <div class="col-lg-6">
     <div class="crm-card h-100">
       <div class="card-body">
-        <h2 class="h6 mb-3">Pipeline by Stage</h2>
-        <canvas id="chart-pipeline" height="220" aria-label="Pipeline value by stage"></canvas>
+        <h2 class="h6 mb-3">Pipeline by stage</h2>
+        <div class="report-chart-wrap">
+          <canvas id="chart-pipeline" aria-label="Pipeline value and count by stage"></canvas>
+          <div class="chart-empty d-none" data-chart-empty>No pipeline data yet.</div>
+        </div>
       </div>
     </div>
   </div>
   <div class="col-lg-6">
     <div class="crm-card h-100">
       <div class="card-body">
-        <h2 class="h6 mb-3">Leads by Source</h2>
-        <canvas id="chart-leads" height="220" aria-label="Lead count by source"></canvas>
+        <h2 class="h6 mb-3">Pipeline by salesperson</h2>
+        <div class="report-chart-wrap">
+          <canvas id="chart-owners" aria-label="Opportunity value by salesperson"></canvas>
+          <div class="chart-empty d-none" data-chart-empty>No salesperson totals yet.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="crm-card h-100">
+      <div class="card-body">
+        <h2 class="h6 mb-3">Leads by source</h2>
+        <div class="report-chart-wrap">
+          <canvas id="chart-leads" aria-label="Lead count by source"></canvas>
+          <div class="chart-empty d-none" data-chart-empty>No lead source data yet.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="crm-card h-100">
+      <div class="card-body">
+        <h2 class="h6 mb-3">Leads by status</h2>
+        <div class="report-chart-wrap">
+          <canvas id="chart-lead-status" aria-label="Lead count by status"></canvas>
+          <div class="chart-empty d-none" data-chart-empty>No lead status data yet.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="crm-card h-100">
+      <div class="card-body">
+        <h2 class="h6 mb-3">Closed won by month</h2>
+        <div class="report-chart-wrap">
+          <canvas id="chart-won" aria-label="Closed won revenue by month"></canvas>
+          <div class="chart-empty d-none" data-chart-empty>No closed-won deals in this range.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="crm-card h-100">
+      <div class="card-body">
+        <h2 class="h6 mb-3">Top products sold</h2>
+        <div class="report-chart-wrap">
+          <canvas id="chart-products" aria-label="Top products by CAD value"></canvas>
+          <div class="chart-empty d-none" data-chart-empty>No closed-won product lines yet.</div>
+        </div>
       </div>
     </div>
   </div>
   <div class="col-12">
     <div class="crm-card">
       <div class="card-body">
-        <h2 class="h6 mb-3">Weighted Sales Forecast by Month</h2>
-        <canvas id="chart-forecast" height="120" aria-label="Weighted forecast by month"></canvas>
+        <h2 class="h6 mb-3">Weighted sales forecast by month</h2>
+        <div class="report-chart-wrap report-chart-wrap-wide">
+          <canvas id="chart-forecast" aria-label="Weighted forecast by month"></canvas>
+          <div class="chart-empty d-none" data-chart-empty>No open deals with expected close dates.</div>
+        </div>
       </div>
     </div>
   </div>
 </div>
 
-{# ------------------------------------------------------------------ #}
-{# 1. Opportunity Summary                                             #}
-{# ------------------------------------------------------------------ #}
-<div class="crm-card mb-3">
+<div class="crm-card mb-3" id="opportunities">
   <div class="card-body">
-    <h2 class="h5 mb-3 pb-2" style="border-bottom:2px solid var(--crm-teal)">Opportunity Summary</h2>
-    <div class="row g-3 mb-3">
-      <div class="col-6 col-md-3">
-        <div class="p-3 rounded-3 bg-body-tertiary text-center">
-          <div class="small text-body-secondary text-uppercase fw-semibold">Total</div>
-          <div class="h4 mb-0" style="color:var(--crm-teal)">{{ opp_totals.total }}</div>
-        </div>
-      </div>
-      <div class="col-6 col-md-3">
-        <div class="p-3 rounded-3 bg-body-tertiary text-center">
-          <div class="small text-body-secondary text-uppercase fw-semibold">Open</div>
-          <div class="h4 mb-0" style="color:var(--crm-teal)">{{ opp_totals.open_count }}</div>
-          <div class="small text-body-secondary">CAD ${{ "{:,.0f}".format(opp_totals.open_value) }}</div>
-        </div>
-      </div>
-      <div class="col-6 col-md-3">
-        <div class="p-3 rounded-3 bg-body-tertiary text-center">
-          <div class="small text-body-secondary text-uppercase fw-semibold">Won</div>
-          <div class="h4 mb-0 text-success">{{ opp_totals.won_count }}</div>
-          <div class="small text-body-secondary">CAD ${{ "{:,.0f}".format(opp_totals.won_value) }}</div>
-        </div>
-      </div>
-      <div class="col-6 col-md-3">
-        <div class="p-3 rounded-3 bg-body-tertiary text-center">
-          <div class="small text-body-secondary text-uppercase fw-semibold">Lost</div>
-          <div class="h4 mb-0 text-danger">{{ opp_totals.lost_count }}</div>
-        </div>
-      </div>
+    <div class="d-flex justify-content-between align-items-center mb-3 pb-2" style="border-bottom:2px solid var(--crm-teal)">
+      <h2 class="h5 mb-0">Opportunity summary</h2>
+      <a class="small" href="{{ url_for('reports.opportunities_csv', **filter_params) }}">Export all</a>
     </div>
+    <p class="small text-body-secondary mb-3">Showing the {{ table_limit }} most recent matching deals.</p>
     <div class="table-responsive">
       <table class="table table-striped align-middle mb-0">
         <thead>
@@ -105,7 +286,7 @@
             <td>{{ row.expected_close_date.strftime("%Y-%m-%d") if row.expected_close_date else "—" }}</td>
           </tr>
           {% else %}
-          <tr><td colspan="8" class="text-body-secondary text-center py-4">No opportunity data yet.</td></tr>
+          <tr><td colspan="8" class="text-body-secondary text-center py-4">No opportunity data for this filter.</td></tr>
           {% endfor %}
         </tbody>
       </table>
@@ -113,39 +294,23 @@
   </div>
 </div>
 
-{# ------------------------------------------------------------------ #}
-{# 2. Lead Summary                                                    #}
-{# ------------------------------------------------------------------ #}
-<div class="crm-card mb-3">
+<div class="crm-card mb-3" id="leads">
   <div class="card-body">
-    <h2 class="h5 mb-3 pb-2" style="border-bottom:2px solid var(--crm-teal)">Lead Summary</h2>
+    <div class="d-flex justify-content-between align-items-center mb-3 pb-2" style="border-bottom:2px solid var(--crm-teal)">
+      <h2 class="h5 mb-0">Lead summary</h2>
+      <a class="small" href="{{ url_for('reports.leads_csv', **filter_params) }}">Export all</a>
+    </div>
     <div class="row g-3 mb-3">
-      <div class="col-6 col-md-2">
-        <div class="p-3 rounded-3 bg-body-tertiary text-center">
-          <div class="small text-body-secondary text-uppercase fw-semibold">Total</div>
-          <div class="h4 mb-0" style="color:var(--crm-teal)">{{ lead_totals.total }}</div>
-        </div>
-      </div>
       {% for status in ['new', 'contacted', 'qualified', 'unqualified', 'converted'] %}
-      <div class="col-6 col-md-2">
+      <div class="col-6 col-md">
         <div class="p-3 rounded-3 bg-body-tertiary text-center">
           <div class="small text-body-secondary text-uppercase fw-semibold">{{ status }}</div>
-          <div class="h4 mb-0" style="color:var(--crm-teal)">{{ lead_totals[status] }}</div>
+          <div class="h5 mb-0" style="color:var(--crm-teal)">{{ lead_totals[status] }}</div>
         </div>
       </div>
       {% endfor %}
     </div>
-    <div class="row g-3 mb-3">
-      <div class="col-lg-4">
-        <h3 class="h6 mb-2">By Source</h3>
-        {% for src in lead_sources %}
-        <div class="d-flex justify-content-between border-bottom py-1">
-          <div class="small">{{ src.source.replace('_', ' ')|title }}</div>
-          <div class="small fw-semibold">{{ src.count }}</div>
-        </div>
-        {% endfor %}
-      </div>
-    </div>
+    <p class="small text-body-secondary mb-3">Showing the {{ table_limit }} most recent matching leads.</p>
     <div class="table-responsive">
       <table class="table table-striped align-middle mb-0">
         <thead>
@@ -169,7 +334,7 @@
             <td>{{ row.created_at.strftime("%Y-%m-%d") if row.created_at else "—" }}</td>
           </tr>
           {% else %}
-          <tr><td colspan="6" class="text-body-secondary text-center py-4">No lead data yet.</td></tr>
+          <tr><td colspan="6" class="text-body-secondary text-center py-4">No lead data for this filter.</td></tr>
           {% endfor %}
         </tbody>
       </table>
@@ -177,12 +342,9 @@
   </div>
 </div>
 
-{# ------------------------------------------------------------------ #}
-{# 3. Sales Forecast                                                  #}
-{# ------------------------------------------------------------------ #}
-<div class="crm-card mb-3">
+<div class="crm-card mb-3" id="forecast">
   <div class="card-body">
-    <h2 class="h5 mb-3 pb-2" style="border-bottom:2px solid var(--crm-teal)">Sales Forecast</h2>
+    <h2 class="h5 mb-3 pb-2" style="border-bottom:2px solid var(--crm-teal)">Sales forecast</h2>
     <div class="row g-3 mb-3">
       <div class="col-6 col-md-4">
         <div class="p-3 rounded-3 bg-body-tertiary text-center">
@@ -193,13 +355,13 @@
       <div class="col-6 col-md-4">
         <div class="p-3 rounded-3 bg-body-tertiary text-center">
           <div class="small text-body-secondary text-uppercase fw-semibold">Total Pipeline</div>
-          <div class="h4 mb-0" style="color:var(--crm-teal)">CAD ${{ "{:,.0f}".format(forecast_totals.total_amount) }}</div>
+          <div class="h4 mb-0" style="color:var(--crm-teal)">CAD ${{ "{:,.0f}".format(forecast_totals.total_amount or 0) }}</div>
         </div>
       </div>
       <div class="col-6 col-md-4">
         <div class="p-3 rounded-3 bg-body-tertiary text-center">
           <div class="small text-body-secondary text-uppercase fw-semibold">Weighted Forecast</div>
-          <div class="h4 mb-0" style="color:var(--crm-teal)">CAD ${{ "{:,.0f}".format(forecast_totals.weighted_amount) }}</div>
+          <div class="h4 mb-0" style="color:var(--crm-teal)">CAD ${{ "{:,.0f}".format(forecast_totals.weighted_amount or 0) }}</div>
         </div>
       </div>
     </div>
@@ -232,12 +394,9 @@
   </div>
 </div>
 
-{# ------------------------------------------------------------------ #}
-{# 4. Accounts by Value                                               #}
-{# ------------------------------------------------------------------ #}
-<div class="crm-card mb-3">
+<div class="crm-card mb-3" id="accounts">
   <div class="card-body">
-    <h2 class="h5 mb-3 pb-2" style="border-bottom:2px solid var(--crm-teal)">Accounts by Value</h2>
+    <h2 class="h5 mb-3 pb-2" style="border-bottom:2px solid var(--crm-teal)">Accounts by value</h2>
     <div class="row g-3">
       <div class="col-lg-6">
         <h3 class="h6 mb-2">Closed Won</h3>
@@ -293,23 +452,23 @@
   </div>
 </div>
 
-{# ------------------------------------------------------------------ #}
-{# 5. Products Sold                                                   #}
-{# ------------------------------------------------------------------ #}
-<div class="crm-card mb-3">
+<div class="crm-card mb-3" id="products">
   <div class="card-body">
-    <h2 class="h5 mb-3 pb-2" style="border-bottom:2px solid var(--crm-teal)">Products Sold</h2>
+    <div class="d-flex justify-content-between align-items-center mb-3 pb-2" style="border-bottom:2px solid var(--crm-teal)">
+      <h2 class="h5 mb-0">Products sold</h2>
+      <a class="small" href="{{ url_for('reports.products_csv', **filter_params) }}">Export all</a>
+    </div>
     <div class="row g-3 mb-3">
       <div class="col-6 col-md-4">
         <div class="p-3 rounded-3 bg-body-tertiary text-center">
           <div class="small text-body-secondary text-uppercase fw-semibold">Total Units</div>
-          <div class="h4 mb-0" style="color:var(--crm-teal)">{{ "{:,}".format(product_totals.total_quantity) }}</div>
+          <div class="h4 mb-0" style="color:var(--crm-teal)">{{ "{:,}".format(product_totals.total_quantity or 0) }}</div>
         </div>
       </div>
       <div class="col-6 col-md-4">
         <div class="p-3 rounded-3 bg-body-tertiary text-center">
           <div class="small text-body-secondary text-uppercase fw-semibold">Total Revenue</div>
-          <div class="h4 mb-0" style="color:var(--crm-teal)">CAD ${{ "{:,.0f}".format(product_totals.total_value) }}</div>
+          <div class="h4 mb-0" style="color:var(--crm-teal)">CAD ${{ "{:,.0f}".format(product_totals.total_value or 0) }}</div>
         </div>
       </div>
     </div>
@@ -347,81 +506,171 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.umd.min.js"></script>
 <script>
 (function () {
-  const teal = "#14B8A6";
+  const teal = "#00A99D";
   const navy = "#0A2540";
-  const palette = ["#14B8A6", "#0A2540", "#3B82F6", "#F59E0B", "#EF4444", "#8B5CF6", "#64748B"];
+  const palette = ["#00A99D", "#0A2540", "#3B82F6", "#F59E0B", "#EF4444", "#8B5CF6", "#64748B", "#22C55E"];
+  const datasets = {{ chart_datasets | tojson }};
+  const builtChart = {{ built_chart | tojson }};
+  const builtType = {{ chart.chart_type | tojson }};
 
-  const pipelineLabels = {{ chart_pipeline_labels | tojson }};
-  const pipelineValues = {{ chart_pipeline_values | tojson }};
-  const leadLabels = {{ chart_lead_labels | tojson }};
-  const leadCounts = {{ chart_lead_counts | tojson }};
-  const forecastLabels = {{ chart_forecast_labels | tojson }};
-  const forecastWeighted = {{ chart_forecast_weighted | tojson }};
+  document.querySelectorAll("[data-report-autosubmit]").forEach((element) => {
+    element.addEventListener("change", () => element.form.submit());
+  });
 
-  if (pipelineLabels.length && document.getElementById("chart-pipeline")) {
-    new Chart(document.getElementById("chart-pipeline"), {
-      type: "bar",
-      data: {
-        labels: pipelineLabels,
-        datasets: [{
-          label: "CAD Value",
-          data: pipelineValues,
-          backgroundColor: teal,
-          borderRadius: 4,
-        }],
+  const datasetSelect = document.querySelector("[data-chart-dataset]");
+  const groupSelect = document.querySelector("[data-chart-group]");
+  const metricSelect = document.querySelector("[data-chart-metric]");
+  if (datasetSelect && groupSelect && metricSelect) {
+    datasetSelect.addEventListener("change", () => {
+      const conf = datasets[datasetSelect.value];
+      if (!conf) return;
+      groupSelect.innerHTML = conf.groups.map(([value, label]) => `<option value="${value}">${label}</option>`).join("");
+      metricSelect.innerHTML = conf.metrics.map(([value, label]) => `<option value="${value}">${label}</option>`).join("");
+    });
+  }
+
+  function moneyTick(value) {
+    return "CAD " + Number(value).toLocaleString();
+  }
+
+  function renderChart(id, spec) {
+    const canvas = document.getElementById(id);
+    if (!canvas) return;
+    const wrap = canvas.parentElement;
+    const empty = wrap ? wrap.querySelector("[data-chart-empty]") : null;
+    const labels = spec.labels || [];
+    if (!labels.length) {
+      canvas.classList.add("d-none");
+      if (empty) empty.classList.remove("d-none");
+      return;
+    }
+    const type = spec.type === "horizontalBar" ? "bar" : spec.type;
+    const options = {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: spec.legend !== false },
       },
-      options: {
-        responsive: true,
-        plugins: { legend: { display: false } },
-        scales: {
-          y: {
-            beginAtZero: true,
-            ticks: { callback: (v) => "CAD " + Number(v).toLocaleString() },
-          },
+    };
+    if (type === "bar" || type === "line") {
+      options.scales = {
+        x: spec.indexAxis === "y" ? {
+          beginAtZero: true,
+          ticks: spec.money ? { callback: moneyTick } : {},
+        } : {},
+        y: spec.indexAxis === "y" ? {} : {
+          beginAtZero: true,
+          ticks: spec.money ? { callback: moneyTick } : {},
         },
+      };
+      if (spec.indexAxis === "y") options.indexAxis = "y";
+    }
+    new Chart(canvas, {
+      type: type,
+      data: {
+        labels: labels,
+        datasets: spec.datasets,
       },
+      options: options,
     });
   }
 
-  if (leadLabels.length && document.getElementById("chart-leads")) {
-    new Chart(document.getElementById("chart-leads"), {
-      type: "doughnut",
-      data: {
-        labels: leadLabels,
-        datasets: [{
-          data: leadCounts,
-          backgroundColor: palette,
-        }],
-      },
-      options: { responsive: true },
-    });
-  }
+  renderChart("chart-builder-canvas", {
+    type: builtType,
+    labels: builtChart.labels || [],
+    money: builtChart.unit === "cad",
+    indexAxis: builtType === "horizontalBar" ? "y" : "x",
+    legend: builtType === "doughnut" || builtType === "pie",
+    datasets: [{
+      label: builtChart.title,
+      data: builtChart.values || [],
+      backgroundColor: (builtType === "doughnut" || builtType === "pie") ? palette : teal,
+      borderColor: navy,
+      fill: builtType === "line",
+      tension: 0.3,
+      borderRadius: 4,
+    }],
+  });
 
-  if (forecastLabels.length && document.getElementById("chart-forecast")) {
-    new Chart(document.getElementById("chart-forecast"), {
-      type: "line",
-      data: {
-        labels: forecastLabels,
-        datasets: [{
-          label: "Weighted Forecast (CAD)",
-          data: forecastWeighted,
-          borderColor: navy,
-          backgroundColor: "rgba(20, 184, 166, 0.15)",
-          fill: true,
-          tension: 0.3,
-        }],
+  renderChart("chart-pipeline", {
+    type: "bar",
+    labels: {{ chart_pipeline_labels | tojson }},
+    money: true,
+    legend: false,
+    datasets: [
+      { label: "CAD value", data: {{ chart_pipeline_values | tojson }}, backgroundColor: teal, borderRadius: 4 }
+    ],
+  });
+
+  renderChart("chart-owners", {
+    type: "bar",
+    indexAxis: "y",
+    labels: {{ chart_owner_labels | tojson }},
+    money: true,
+    legend: false,
+    datasets: [{ label: "CAD value", data: {{ chart_owner_values | tojson }}, backgroundColor: teal, borderRadius: 4 }],
+  });
+
+  renderChart("chart-leads", {
+    type: "doughnut",
+    labels: {{ chart_lead_labels | tojson }},
+    datasets: [{ data: {{ chart_lead_counts | tojson }}, backgroundColor: palette }],
+  });
+
+  renderChart("chart-lead-status", {
+    type: "doughnut",
+    labels: {{ chart_lead_status_labels | tojson }},
+    datasets: [{ data: {{ chart_lead_status_counts | tojson }}, backgroundColor: palette }],
+  });
+
+  renderChart("chart-won", {
+    type: "line",
+    labels: {{ chart_won_labels | tojson }},
+    money: true,
+    legend: false,
+    datasets: [{
+      label: "Won CAD",
+      data: {{ chart_won_values | tojson }},
+      borderColor: navy,
+      backgroundColor: "rgba(0, 169, 157, 0.15)",
+      fill: true,
+      tension: 0.3,
+    }],
+  });
+
+  renderChart("chart-products", {
+    type: "bar",
+    indexAxis: "y",
+    labels: {{ chart_product_labels | tojson }},
+    money: true,
+    legend: false,
+    datasets: [{ label: "CAD value", data: {{ chart_product_values | tojson }}, backgroundColor: teal, borderRadius: 4 }],
+  });
+
+  renderChart("chart-forecast", {
+    type: "line",
+    labels: {{ chart_forecast_labels | tojson }},
+    money: true,
+    legend: true,
+    datasets: [
+      {
+        label: "Total pipeline",
+        data: {{ chart_forecast_total | tojson }},
+        borderColor: "#94a3b8",
+        backgroundColor: "rgba(148, 163, 184, 0.12)",
+        fill: false,
+        tension: 0.3,
       },
-      options: {
-        responsive: true,
-        scales: {
-          y: {
-            beginAtZero: true,
-            ticks: { callback: (v) => "CAD " + Number(v).toLocaleString() },
-          },
-        },
+      {
+        label: "Weighted forecast",
+        data: {{ chart_forecast_weighted | tojson }},
+        borderColor: navy,
+        backgroundColor: "rgba(0, 169, 157, 0.15)",
+        fill: true,
+        tension: 0.3,
       },
-    });
-  }
+    ],
+  });
 })();
 </script>
 {% endblock %}

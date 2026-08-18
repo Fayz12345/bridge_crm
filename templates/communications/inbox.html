@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block title %}WhatsApp | {{ config.APP_NAME }}{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
+  <div>
+    <p class="text-uppercase small fw-semibold text-body-secondary mb-1">Communications</p>
+    <h1 class="h3 mb-1">WhatsApp via Wati</h1>
+    <p class="text-body-secondary mb-0">Reply to individual chats or send a template broadcast to many leads or accounts.</p>
+  </div>
+  <a class="btn btn-success" href="{{ url_for('communications.broadcast_view') }}">
+    <span class="material-symbols-outlined">campaign</span> New broadcast
+  </a>
+</div>
+
+{% if not whatsapp_api_ready %}
+<div class="alert alert-warning">
+  Wati is not connected yet. Add <code>WHATSAPP_PROVIDER=wati</code>, <code>WATI_API_ENDPOINT</code>, and <code>WATI_ACCESS_TOKEN</code> to <code>.env</code>.
+  Individual session replies and broadcasts both send through Wati once those are set.
+</div>
+{% elif not whatsapp_templates_ready %}
+<div class="alert alert-info">
+  Wati credentials are present, so you can send 1:1 session replies. Add <code>WHATSAPP_DEFAULT_TEMPLATE</code> (an approved Wati template) to enable broadcasts and cold outreach.
+</div>
+{% endif %}
+
+<div class="crm-card">
+  <div class="card-body">
+    <h2 class="h5 mb-3 pb-2" style="border-bottom:2px solid var(--crm-teal)">Recent conversations</h2>
+    {% for item in conversations %}
+    <a
+      class="d-block p-3 rounded-3 bg-body-tertiary mb-2 text-decoration-none"
+      href="{% if item.related_type == 'lead' %}{{ url_for('leads.detail_view', lead_id=item.related_id) }}#whatsapp-thread{% elif item.related_type == 'account' %}{{ url_for('accounts.detail_view', account_id=item.related_id) }}#whatsapp-thread{% else %}#{% endif %}"
+    >
+      <div class="d-flex justify-content-between gap-3">
+        <div>
+          <div class="fw-semibold" style="color:var(--crm-navy-light)">{{ item.display_name }}</div>
+          <div class="small text-body-secondary">
+            {% if item.direction == "inbound" %}Reply: {% endif %}{{ item.body or "(no text)" }}
+          </div>
+        </div>
+        <div class="text-end small text-body-secondary">
+          <div><span class="badge text-bg-light text-uppercase">{{ item.related_type }}</span></div>
+          <div class="mt-1">
+            {% if item.direction == "inbound" %}
+            <span class="badge text-bg-success">reply</span>
+            {% else %}
+            {{ item.direction }} · {{ item.status }}
+            {% endif %}
+          </div>
+          <div>{{ item.created_at.strftime("%Y-%m-%d %H:%M") if item.created_at else "" }}</div>
+        </div>
+      </div>
+    </a>
+    {% else %}
+    <div class="crm-empty-state">
+      <span class="material-symbols-outlined">chat</span>
+      <span>No WhatsApp messages yet. Open a lead or account to send a 1:1 message, or start a broadcast.</span>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

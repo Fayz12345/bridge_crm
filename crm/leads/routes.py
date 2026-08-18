@@ -1,4 +1,4 @@
-from flask import Blueprint, flash, g, redirect, render_template, request, url_for
+from flask import Blueprint, flash, g, jsonify, redirect, render_template, request, url_for
 
 from bridge_crm.crm.accounts.queries import create_account
 from bridge_crm.crm.activities.queries import list_activities, log_activity
@@ -11,13 +11,17 @@ from bridge_crm.crm.custom_fields.queries import (
 )
 from bridge_crm.crm.emails.queries import create_email, mark_email_failed, mark_email_sent
 from bridge_crm.crm.leads.queries import (
+    LEAD_STATUS_COLUMNS,
+    MOVABLE_LEAD_STATUSES,
     VALID_LEAD_STATUSES,
     create_lead,
     delete_lead,
     get_lead,
     get_leads_by_ids,
+    leads_by_status,
     list_leads,
     update_lead,
+    update_lead_status,
 )
 from bridge_crm.crm.opportunities.constants import DEFAULT_OPPORTUNITY_CURRENCY
 from bridge_crm.crm.opportunities.queries import create_contact, create_opportunity
@@ -168,6 +172,8 @@ def _render_bulk_whatsapp_template(
     *,
     return_to: str,
     body_text: str = "",
+    broadcast_name: str = "",
+    template_name: str = "",
 ):
     rows = _lead_bulk_rows(leads)
     return render_bulk_whatsapp_page(
@@ -177,6 +183,8 @@ def _render_bulk_whatsapp_template(
         entity_label="Leads",
         compose_endpoint="leads.bulk_whatsapp_view",
         send_endpoint="leads.send_bulk_whatsapp_view",
+        broadcast_name=broadcast_name,
+        template_name=template_name,
     )
 
 
@@ -220,6 +228,71 @@ def list_view():
         selected_tag_ids=tag_ids,
         return_to=_current_list_url(),
     )
+
+
+def _wants_json() -> bool:
+    requested = (request.headers.get("X-Requested-With") or "").lower()
+    if requested == "xmlhttprequest":
+        return True
+    return request.accept_mimetypes.best_match(["application/json", "text/html"]) == "application/json"
+
+
+@leads_bp.route("/pipeline")
+@login_required
+def pipeline_view():
+    leads = leads_by_status()
+    grouped = {column["status_key"]: [] for column in LEAD_STATUS_COLUMNS}
+    for lead in leads:
+        grouped.setdefault(lead["status"], []).append(lead)
+    return render_template(
+        "leads/pipeline.html",
+        stages=LEAD_STATUS_COLUMNS,
+        grouped=grouped,
+    )
+
+
+@leads_bp.route("/<int:lead_id>/status", methods=["POST"])
+@login_required
+def update_status_view(lead_id: int):
+    lead = get_lead(lead_id)
+    wants_json = _wants_json()
+    if not lead:
+        if wants_json:
+            return jsonify({"ok": False, "error": "Lead not found."}), 404
+        flash("Lead not found.", "danger")
+        return redirect(url_for("leads.list_view"))
+
+    if lead["status"] == "converted":
+        if wants_json:
+            return jsonify({"ok": False, "error": "Converted leads cannot be moved on the board."}), 400
+        flash("Converted leads cannot be moved on the board. Use the lead record if you need to make changes.", "warning")
+        return redirect(url_for("leads.pipeline_view"))
+
+    target_status = request.form.get("status", "").strip()
+    if target_status not in MOVABLE_LEAD_STATUSES:
+        if wants_json:
+            return jsonify({
+                "ok": False,
+                "error": "Use Convert on the lead record to create an account and opportunity.",
+            }), 400
+        flash("Use Convert on the lead record to create an account and opportunity.", "warning")
+        return redirect(url_for("leads.pipeline_view"))
+
+    if lead["status"] != target_status:
+        update_lead_status(lead_id, target_status)
+        log_activity(
+            "lead",
+            lead_id,
+            "status_changed",
+            f"Lead status changed from {lead['status']} to {target_status}.",
+            g.user["id"],
+            {"from": lead["status"], "to": target_status},
+        )
+
+    if wants_json:
+        return jsonify({"ok": True, "status": target_status})
+    flash("Lead status updated.", "success")
+    return redirect(url_for("leads.pipeline_view"))
 
 
 @leads_bp.route("/new", methods=["GET", "POST"])
@@ -487,6 +560,8 @@ def bulk_whatsapp_view():
         leads,
         return_to=return_to,
         body_text=body_text,
+        broadcast_name=request.form.get("broadcast_name", "").strip(),
+        template_name=request.form.get("template_name", "").strip(),
     )
 
 
@@ -512,6 +587,8 @@ def send_bulk_whatsapp_view():
         body_text=body_text,
         related_type="lead",
         return_to=return_to,
+        broadcast_name=request.form.get("broadcast_name", "").strip(),
+        template_name=request.form.get("template_name", "").strip(),
     )
     return redirect(return_to)
 

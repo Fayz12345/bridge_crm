@@ -3,12 +3,8 @@ import logging
 from flask import Blueprint, current_app, request
 
 from bridge_crm.config import get_settings
-from bridge_crm.crm.activities.queries import log_activity
-from bridge_crm.crm.whatsapp.queries import (
-    create_whatsapp_message,
-    find_related_entity_by_phone,
-    update_whatsapp_message_status,
-)
+from bridge_crm.crm.whatsapp.inbound import record_inbound_message
+from bridge_crm.crm.whatsapp.queries import update_whatsapp_message_status
 
 logger = logging.getLogger(__name__)
 
@@ -73,30 +69,12 @@ def _process_inbound_messages(messages: list, contacts: list) -> None:
         if not from_number or not body:
             continue
 
-        entity = find_related_entity_by_phone(from_number)
-        if not entity:
-            logger.info("Inbound WhatsApp from unknown number %s", from_number)
-            continue
-
-        create_whatsapp_message(
-            direction="inbound",
-            related_type=entity["related_type"],
-            related_id=entity["related_id"],
-            to_number=None,
+        record_inbound_message(
             from_number=from_number,
-            message_type="text",
             body=body,
-            template_name=None,
-            status="delivered",
             wa_message_id=wa_message_id,
-            sent_by=None,
-        )
-        sender_label = contact_names.get(from_number) or from_number
-        log_activity(
-            entity["related_type"],
-            entity["related_id"],
-            "note",
-            f"Inbound WhatsApp from {sender_label}: {body[:200]}",
-            None,
-            {"channel": "whatsapp", "wa_message_id": wa_message_id},
+            sender_name=contact_names.get(from_number),
+            message_type="text",
+            notify=True,
+            log=True,
         )

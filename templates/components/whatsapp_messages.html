@@ -1,0 +1,35 @@
+{% set ns = namespace(prev_day="") %}
+{% for msg in whatsapp_messages %}
+  {% set day = msg.created_at.strftime("%Y-%m-%d") if msg.created_at else "" %}
+  {% if day and day != ns.prev_day %}
+  <div class="wa-day-sep"><span>{{ msg.created_at.strftime("%d %b %Y") }}</span></div>
+  {% set ns.prev_day = day %}
+  {% endif %}
+  <div class="wa-row {% if msg.direction == 'outbound' %}is-out{% else %}is-in{% endif %}">
+    <div class="wa-bubble {% if msg.status == 'failed' %}is-failed{% endif %}">
+      <div class="wa-bubble-text">{{ msg.body or "" }}</div>
+      <div class="wa-bubble-meta">
+        {% if msg.created_at %}{{ msg.created_at.strftime("%H:%M") }}{% endif %}
+        {% if msg.direction == "outbound" %}
+        <span class="wa-status wa-status-{{ msg.status or 'sent' }}" title="{{ msg.status }}">
+          {% if msg.status == "failed" %}
+          <span class="material-symbols-outlined">error</span>
+          {% elif msg.status == "read" %}
+          <span class="material-symbols-outlined">done_all</span>
+          {% elif msg.status == "delivered" %}
+          <span class="material-symbols-outlined">done_all</span>
+          {% else %}
+          <span class="material-symbols-outlined">done</span>
+          {% endif %}
+        </span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+{% else %}
+<div class="wa-thread-empty">
+  <span class="material-symbols-outlined">forum</span>
+  <p class="mb-1 fw-semibold">No messages yet</p>
+  <p class="mb-0">Send a reply or template. Contact replies appear here automatically.</p>
+</div>
+{% endfor %}

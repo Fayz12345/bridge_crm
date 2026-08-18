@@ -21,13 +21,17 @@ class WatiAPIError(RuntimeError):
         self.payload = payload or {}
 
 
-def wati_configured() -> bool:
+def wati_credentials_configured() -> bool:
     settings = get_settings()
-    return bool(
-        settings.wati_api_endpoint.strip()
-        and settings.wati_access_token.strip()
-        and settings.whatsapp_default_template.strip()
-    )
+    return bool(settings.wati_api_endpoint.strip() and settings.wati_access_token.strip())
+
+
+def wati_configured() -> bool:
+    return wati_credentials_configured()
+
+
+def wati_templates_ready() -> bool:
+    return wati_credentials_configured() and bool(get_settings().whatsapp_default_template.strip())
 
 
 def normalize_whatsapp_number(phone: str | None) -> str | None:
@@ -64,10 +68,9 @@ def _api_request(
     payload: dict | None = None,
     query: dict | None = None,
     form_data: dict | None = None,
+    timeout: int = 45,
 ) -> dict[str, Any]:
-    if not wati_configured() and not (
-        get_settings().wati_api_endpoint.strip() and get_settings().wati_access_token.strip()
-    ):
+    if not wati_credentials_configured():
         raise WatiAPIError("Wati API credentials are not configured.")
 
     url = f"{_base_url()}{path}"
@@ -85,7 +88,7 @@ def _api_request(
 
     api_request = request.Request(url, data=data, method=method, headers=headers)
     try:
-        with request.urlopen(api_request, timeout=45) as response:
+        with request.urlopen(api_request, timeout=timeout) as response:
             body = response.read().decode("utf-8")
             return json.loads(body) if body else {}
     except error.HTTPError as exc:
@@ -106,6 +109,8 @@ def _api_request(
         except json.JSONDecodeError:
             pass
         raise WatiAPIError(str(message), status_code=exc.code, payload=parsed) from exc
+    except error.URLError as exc:
+        raise WatiAPIError(str(getattr(exc, "reason", None) or exc)) from exc
 
 
 def send_session_message(to_number: str, message: str) -> dict[str, Any]:
@@ -177,6 +182,7 @@ def send_outreach_template(
     rep_name: str,
     message_body: str,
     template_name: str | None = None,
+    broadcast_name: str | None = None,
 ) -> dict[str, Any]:
     """
     Send CRM outreach template via Wati.
@@ -185,6 +191,17 @@ def send_outreach_template(
     name / rep_name / message (configure your Wati template accordingly).
     Override with WATI_TEMPLATE_PARAM_NAMES=name,rep_name,message if needed.
     """
+    settings = get_settings()
+    parameters = outreach_parameters(contact_name, rep_name, message_body)
+    return send_template_message(
+        to_number,
+        template_name or settings.whatsapp_default_template,
+        parameters=parameters,
+        broadcast_name=broadcast_name,
+    )
+
+
+def outreach_parameters(contact_name: str, rep_name: str, message_body: str) -> list[dict[str, str]]:
     settings = get_settings()
     param_names = [
         part.strip()
@@ -196,14 +213,76 @@ def send_outreach_template(
         (rep_name or "Bridge Wireless").strip()[:256],
         (message_body or "").strip()[:1024],
     ]
-    parameters = [
+    return [
         {"name": param_names[i] if i < len(param_names) else f"param{i + 1}", "value": values[i]}
         for i in range(min(len(param_names), len(values)))
     ]
-    return send_template_message(
-        to_number,
-        template_name or settings.whatsapp_default_template,
-        parameters=parameters,
+
+
+def send_template_broadcast(
+    receivers: list[dict[str, Any]],
+    *,
+    template_name: str | None = None,
+    broadcast_name: str | None = None,
+) -> dict[str, Any]:
+    """
+    Send one approved template to many numbers as a Wati broadcast.
+
+    Each receiver is: {"whatsapp_number": "...", "parameters": [{"name","value"}]}.
+    """
+    settings = get_settings()
+    template = (template_name or settings.whatsapp_default_template or "").strip()
+    if not template:
+        raise WatiAPIError("WhatsApp template name is required.")
+    if not receivers:
+        raise WatiAPIError("At least one recipient is required.")
+
+    payload: dict[str, Any] = {
+        "template_name": template,
+        "broadcast_name": (broadcast_name or f"crm_{template}")[:100],
+        "receivers": [],
+    }
+    if settings.wati_channel_number.strip():
+        payload["channel_number"] = settings.wati_channel_number.strip()
+
+    for receiver in receivers:
+        number = normalize_whatsapp_number(receiver.get("whatsapp_number"))
+        if not number:
+            continue
+        payload["receivers"].append(
+            {
+                "whatsappNumber": number,
+                "customParams": receiver.get("parameters") or [],
+            }
+        )
+    if not payload["receivers"]:
+        raise WatiAPIError("No valid WhatsApp numbers in this broadcast.")
+
+    response = _api_request("POST", "/api/v1/sendTemplateMessages", payload=payload)
+    if response.get("result") is False:
+        raise WatiAPIError(
+            str(response.get("info") or response.get("message") or "Wati broadcast failed"),
+            payload=response,
+        )
+    logger.info(
+        "Wati broadcast %s sent to %s recipient(s)",
+        payload["broadcast_name"],
+        len(payload["receivers"]),
+    )
+    return response
+
+
+def get_messages(whatsapp_number: str, *, page_size: int = 100, page_number: int = 1) -> dict[str, Any]:
+    """Fetch recent conversation history for a WhatsApp number from Wati."""
+    recipient = normalize_whatsapp_number(whatsapp_number)
+    if not recipient:
+        raise WatiAPIError("Invalid WhatsApp phone number.")
+    path = f"/api/v1/getMessages/{quote(recipient, safe='')}"
+    return _api_request(
+        "GET",
+        path,
+        query={"pageSize": max(1, min(page_size, 100)), "pageNumber": max(1, page_number)},
+        timeout=8,
     )
 
 
