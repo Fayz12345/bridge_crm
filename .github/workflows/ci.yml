@@ -26,7 +26,7 @@ jobs:
         run: ruff check .
 
       - name: Compile check
-        run: python -m py_compile bridge_crm/app.py
+        run: python -m py_compile app.py
 
   test:
     runs-on: ubuntu-latest
