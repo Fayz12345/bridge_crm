@@ -3,6 +3,10 @@ from decimal import Decimal
 
 from sqlalchemy import delete, func, insert, select, update
 
+from bridge_crm.crm.purchases.constants import (
+    DEFAULT_PURCHASE_CURRENCY,
+    purchase_total_cad_expression,
+)
 from bridge_crm.db.engine import get_connection
 from bridge_crm.db.schema import (
     crm_accounts,
@@ -11,10 +15,6 @@ from bridge_crm.db.schema import (
     crm_purchase_stages,
     crm_purchases,
     crm_users,
-)
-from bridge_crm.crm.purchases.constants import (
-    DEFAULT_PURCHASE_CURRENCY,
-    purchase_total_cad_expression,
 )
 
 
@@ -101,7 +101,7 @@ def create_purchase(payload: dict) -> int:
         "estimated_total": _normalize_decimal(payload.get("estimated_total")),
         "currency": payload.get("currency", DEFAULT_PURCHASE_CURRENCY),
         "conversion_rate_to_cad": _normalize_decimal(payload.get("conversion_rate_to_cad"))
-        or Decimal("1"),
+        or Decimal(1),
         "expected_delivery_date": _normalize_date(payload.get("expected_delivery_date")),
         "close_date": _normalize_date(payload.get("close_date")),
         "close_reason": payload.get("close_reason"),
@@ -126,7 +126,7 @@ def update_purchase(purchase_id: int, payload: dict) -> None:
         "estimated_total": _normalize_decimal(payload.get("estimated_total")),
         "currency": payload.get("currency", DEFAULT_PURCHASE_CURRENCY),
         "conversion_rate_to_cad": _normalize_decimal(payload.get("conversion_rate_to_cad"))
-        or Decimal("1"),
+        or Decimal(1),
         "expected_delivery_date": _normalize_date(payload.get("expected_delivery_date")),
         "close_date": _normalize_date(payload.get("close_date")),
         "close_reason": payload.get("close_reason"),

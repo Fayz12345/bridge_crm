@@ -9,8 +9,8 @@ from bridge_crm.db.schema import (
     crm_custom_fields,
     crm_leads,
     crm_opportunities,
-    crm_purchases,
     crm_products,
+    crm_purchases,
 )
 
 VALID_OBJECT_TYPES = ("account", "lead", "opportunity", "purchase", "product")

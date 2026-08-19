@@ -8,9 +8,9 @@ from bridge_crm.crm.segments.queries import (
 )
 from bridge_crm.db.engine import get_connection
 from bridge_crm.db.schema import (
-    crm_accounts,
     crm_account_product_interests,
     crm_account_tags,
+    crm_accounts,
     crm_contacts,
     crm_leads,
     crm_opportunities,

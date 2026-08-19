@@ -1,15 +1,36 @@
-from flask import Blueprint, flash, g, jsonify, redirect, render_template, request, url_for
+from flask import (
+    Blueprint,
+    flash,
+    g,
+    jsonify,
+    redirect,
+    render_template,
+    request,
+    url_for,
+)
 
 from bridge_crm.crm.accounts.queries import create_account
 from bridge_crm.crm.activities.queries import list_activities, log_activity
 from bridge_crm.crm.auth.queries import list_assignable_users
 from bridge_crm.crm.auth.routes import login_required
+from bridge_crm.crm.communications.whatsapp_bulk import (
+    render_bulk_whatsapp_page,
+    send_bulk_whatsapp,
+)
+from bridge_crm.crm.communications.whatsapp_thread import (
+    conversation_context,
+    send_entity_whatsapp,
+)
 from bridge_crm.crm.custom_fields.queries import (
     extract_custom_field_values,
     get_custom_field_values,
     list_custom_fields,
 )
-from bridge_crm.crm.emails.queries import create_email, mark_email_failed, mark_email_sent
+from bridge_crm.crm.emails.queries import (
+    create_email,
+    mark_email_failed,
+    mark_email_sent,
+)
 from bridge_crm.crm.leads.queries import (
     LEAD_STATUS_COLUMNS,
     MOVABLE_LEAD_STATUSES,
@@ -36,8 +57,6 @@ from bridge_crm.crm.segments.queries import (
     replace_lead_product_interests,
     replace_lead_tags,
 )
-from bridge_crm.crm.communications.whatsapp_bulk import render_bulk_whatsapp_page, send_bulk_whatsapp
-from bridge_crm.crm.communications.whatsapp_thread import conversation_context, send_entity_whatsapp
 from bridge_crm.integrations.email_sender import send_email, smtp_configured
 
 leads_bp = Blueprint(
@@ -528,7 +547,7 @@ def send_bulk_email_view():
                 {"email_id": email_id, "bulk": True},
             )
             sent_count += 1
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             mark_email_failed(email_id, str(exc))
             failed_count += 1
 

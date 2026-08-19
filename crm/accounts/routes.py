@@ -1,8 +1,8 @@
 from flask import Blueprint, flash, g, redirect, render_template, request, url_for
 
 from bridge_crm.crm.accounts.queries import (
-    create_contact_for_account,
     create_account,
+    create_contact_for_account,
     delete_account,
     get_account,
     get_account_by_erp_client_id,
@@ -10,18 +10,30 @@ from bridge_crm.crm.accounts.queries import (
     get_contact_for_account,
     list_accounts,
     list_contacts_for_account,
-    update_contact_for_account,
     update_account,
+    update_contact_for_account,
 )
 from bridge_crm.crm.activities.queries import log_activity
 from bridge_crm.crm.auth.queries import list_assignable_users
 from bridge_crm.crm.auth.routes import login_required
+from bridge_crm.crm.communications.whatsapp_bulk import (
+    render_bulk_whatsapp_page,
+    send_bulk_whatsapp,
+)
+from bridge_crm.crm.communications.whatsapp_thread import (
+    conversation_context,
+    send_entity_whatsapp,
+)
 from bridge_crm.crm.custom_fields.queries import (
     extract_custom_field_values,
     get_custom_field_values,
     list_custom_fields,
 )
-from bridge_crm.crm.emails.queries import create_email, mark_email_failed, mark_email_sent
+from bridge_crm.crm.emails.queries import (
+    create_email,
+    mark_email_failed,
+    mark_email_sent,
+)
 from bridge_crm.crm.segments.queries import (
     get_account_product_interest_ids,
     get_account_tag_names,
@@ -31,8 +43,6 @@ from bridge_crm.crm.segments.queries import (
     replace_account_product_interests,
     replace_account_tags,
 )
-from bridge_crm.crm.communications.whatsapp_bulk import render_bulk_whatsapp_page, send_bulk_whatsapp
-from bridge_crm.crm.communications.whatsapp_thread import conversation_context, send_entity_whatsapp
 from bridge_crm.integrations.email_sender import send_email, smtp_configured
 
 accounts_bp = Blueprint(
@@ -546,7 +556,7 @@ def send_bulk_email_view():
                 {"email_id": email_id, "bulk": True},
             )
             sent_count += 1
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             mark_email_failed(email_id, str(exc))
             failed_count += 1
 

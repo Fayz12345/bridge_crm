@@ -2,9 +2,10 @@ from datetime import datetime, timezone
 
 from flask import flash, g, render_template
 
+from bridge_crm.config import get_settings
 from bridge_crm.crm.activities.queries import log_activity
 from bridge_crm.crm.whatsapp.queries import create_whatsapp_message
-from bridge_crm.config import get_settings
+from bridge_crm.integrations.wati import outreach_parameters
 from bridge_crm.integrations.whatsapp import (
     WhatsAppAPIError,
     _extract_message_id,
@@ -15,7 +16,6 @@ from bridge_crm.integrations.whatsapp import (
     templates_ready,
     whatsapp_configured,
 )
-from bridge_crm.integrations.wati import outreach_parameters
 
 
 def render_bulk_whatsapp_page(

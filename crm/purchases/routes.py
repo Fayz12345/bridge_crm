@@ -1,6 +1,15 @@
 from decimal import Decimal, InvalidOperation
 
-from flask import Blueprint, flash, g, jsonify, redirect, render_template, request, url_for
+from flask import (
+    Blueprint,
+    flash,
+    g,
+    jsonify,
+    redirect,
+    render_template,
+    request,
+    url_for,
+)
 
 from bridge_crm.crm.activities.queries import list_activities, log_activity
 from bridge_crm.crm.auth.queries import list_assignable_users
@@ -10,7 +19,12 @@ from bridge_crm.crm.custom_fields.queries import (
     get_custom_field_values,
     list_custom_fields,
 )
-from bridge_crm.crm.emails.queries import create_email, list_emails, mark_email_failed, mark_email_sent
+from bridge_crm.crm.emails.queries import (
+    create_email,
+    list_emails,
+    mark_email_failed,
+    mark_email_sent,
+)
 from bridge_crm.crm.products.queries import list_product_stock_groups
 from bridge_crm.crm.purchases.constants import (
     DEFAULT_PURCHASE_CURRENCY,
@@ -365,7 +379,7 @@ def add_line_view(purchase_id: int):
                 "notes": request.form.get("notes", "").strip() or None,
             }
         )
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         flash(f"Could not add quote line: {exc}", "danger")
         return redirect(url_for("purchases.detail_view", purchase_id=purchase_id))
 
@@ -409,7 +423,7 @@ def edit_line_view(purchase_id: int, line_id: int):
                 "notes": request.form.get("notes", "").strip() or None,
             },
         )
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         flash(f"Could not update quote line: {exc}", "danger")
         return redirect(url_for("purchases.detail_view", purchase_id=purchase_id))
 
@@ -506,7 +520,7 @@ def send_email_view(purchase_id: int):
             {"email_id": email_id},
         )
         flash("Email sent.", "success")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         mark_email_failed(email_id, str(exc))
         flash(f"Email could not be sent: {exc}", "warning")
 

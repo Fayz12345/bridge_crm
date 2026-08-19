@@ -1,13 +1,6 @@
 from sqlalchemy import inspect, select, text
 from sqlalchemy.dialects.postgresql import insert
 
-from bridge_crm.db.engine import get_engine
-from bridge_crm.db.schema import (
-    crm_pipeline_stages,
-    crm_product_interest_options,
-    crm_purchase_stages,
-    metadata,
-)
 from bridge_crm.crm.opportunities.constants import (
     OPPORTUNITY_STAGE_DEFINITIONS,
     OPPORTUNITY_STAGE_KEYS,
@@ -18,6 +11,13 @@ from bridge_crm.crm.purchases.constants import (
     PURCHASE_STAGE_KEYS,
 )
 from bridge_crm.crm.segments.constants import DEFAULT_PRODUCT_INTEREST_OPTIONS
+from bridge_crm.db.engine import get_engine
+from bridge_crm.db.schema import (
+    crm_pipeline_stages,
+    crm_product_interest_options,
+    crm_purchase_stages,
+    metadata,
+)
 
 DEFAULT_PIPELINE_STAGES = OPPORTUNITY_STAGE_DEFINITIONS
 DEFAULT_PURCHASE_STAGES = PURCHASE_STAGE_DEFINITIONS

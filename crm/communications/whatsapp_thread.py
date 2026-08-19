@@ -5,7 +5,10 @@ from bridge_crm.crm.accounts.queries import get_account, list_contacts_for_accou
 from bridge_crm.crm.activities.queries import log_activity
 from bridge_crm.crm.leads.queries import get_lead
 from bridge_crm.crm.whatsapp.inbound import sync_conversation_from_provider
-from bridge_crm.crm.whatsapp.queries import create_whatsapp_message, list_whatsapp_messages
+from bridge_crm.crm.whatsapp.queries import (
+    create_whatsapp_message,
+    list_whatsapp_messages,
+)
 from bridge_crm.integrations.whatsapp import (
     WhatsAppAPIError,
     _extract_message_id,

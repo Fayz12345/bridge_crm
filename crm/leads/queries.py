@@ -15,7 +15,6 @@ from bridge_crm.db.schema import (
     crm_users,
 )
 
-
 VALID_LEAD_STATUSES = {"new", "contacted", "qualified", "unqualified", "converted"}
 LEAD_STATUS_COLUMNS = [
     {"status_key": "new", "display_name": "New"},

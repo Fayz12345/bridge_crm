@@ -2,8 +2,14 @@ from flask import Blueprint, flash, redirect, render_template, request, url_for
 
 from bridge_crm.crm.accounts.queries import get_accounts_by_ids, list_accounts
 from bridge_crm.crm.auth.routes import login_required
-from bridge_crm.crm.communications.whatsapp_bulk import render_bulk_whatsapp_page, send_bulk_whatsapp
-from bridge_crm.crm.communications.whatsapp_thread import conversation_context, require_thread_entity
+from bridge_crm.crm.communications.whatsapp_bulk import (
+    render_bulk_whatsapp_page,
+    send_bulk_whatsapp,
+)
+from bridge_crm.crm.communications.whatsapp_thread import (
+    conversation_context,
+    require_thread_entity,
+)
 from bridge_crm.crm.leads.queries import get_leads_by_ids, list_leads
 from bridge_crm.crm.whatsapp.queries import list_recent_conversations
 from bridge_crm.integrations.whatsapp import templates_ready, whatsapp_configured

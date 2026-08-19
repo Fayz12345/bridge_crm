@@ -1,4 +1,13 @@
-from flask import Blueprint, current_app, flash, g, redirect, render_template, request, url_for
+from flask import (
+    Blueprint,
+    current_app,
+    flash,
+    g,
+    redirect,
+    render_template,
+    request,
+    url_for,
+)
 
 from bridge_crm.crm.auth.queries import (
     VALID_USER_ROLES,
@@ -74,7 +83,7 @@ def create_view():
                         ),
                     )
                     flash("User created and welcome email sent.", "success")
-                except Exception:
+                except Exception:  # noqa: BLE001
                     flash("User created but the welcome email could not be sent.", "warning")
             else:
                 flash("User created. Email delivery is not configured so no welcome email was sent.", "success")

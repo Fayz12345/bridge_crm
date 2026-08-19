@@ -3,8 +3,8 @@ from flask import Blueprint, g, render_template
 from bridge_crm.crm.auth.routes import login_required
 from bridge_crm.crm.dashboard.queries import (
     all_recent_opportunities,
-    my_leads,
     my_lead_count,
+    my_leads,
     my_opportunities,
     my_pipeline_value,
     recently_closed_opportunities,

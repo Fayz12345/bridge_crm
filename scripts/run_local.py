@@ -62,7 +62,7 @@ def _ensure_pgserver() -> str:
         )
         if "1 row" not in exists:
             server.psql("CREATE DATABASE bridge_crm OWNER bridge_crm;")
-    except Exception:
+    except Exception:  # noqa: BLE001,S110
         # Role/database may already exist from a prior run.
         pass
 

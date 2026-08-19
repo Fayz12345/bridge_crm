@@ -8,7 +8,10 @@ from flask import current_app, render_template
 
 from bridge_crm.config import get_settings
 from bridge_crm.crm.documents.queries import create_document
-from bridge_crm.crm.opportunities.queries import get_opportunity, get_opportunity_line_items
+from bridge_crm.crm.opportunities.queries import (
+    get_opportunity,
+    get_opportunity_line_items,
+)
 
 
 def generate_quote_pdf(opportunity_id: int, generated_by: int) -> dict:
@@ -120,9 +123,9 @@ def _build_context(
     extra_context: dict,
 ) -> dict:
     settings = get_settings()
-    subtotal = sum((Decimal(line["line_total"] or 0) for line in line_items), Decimal("0"))
+    subtotal = sum((Decimal(line["line_total"] or 0) for line in line_items), Decimal(0))
     tax_rate = Decimal(str(settings.document_tax_rate or 0))
-    tax_amount = (subtotal * tax_rate / Decimal("100")).quantize(Decimal("0.01"))
+    tax_amount = (subtotal * tax_rate / Decimal(100)).quantize(Decimal("0.01"))
     grand_total = subtotal + tax_amount
 
     return {

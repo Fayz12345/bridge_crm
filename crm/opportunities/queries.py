@@ -3,18 +3,18 @@ from decimal import Decimal
 
 from sqlalchemy import delete, func, insert, select, update
 
+from bridge_crm.crm.opportunities.constants import (
+    DEFAULT_OPPORTUNITY_CURRENCY,
+    opportunity_amount_cad_expression,
+)
 from bridge_crm.db.engine import get_connection
 from bridge_crm.db.schema import (
     crm_accounts,
     crm_contacts,
-    crm_opportunity_lines,
     crm_opportunities,
+    crm_opportunity_lines,
     crm_pipeline_stages,
     crm_users,
-)
-from bridge_crm.crm.opportunities.constants import (
-    DEFAULT_OPPORTUNITY_CURRENCY,
-    opportunity_amount_cad_expression,
 )
 
 
@@ -112,7 +112,7 @@ def create_opportunity(payload: dict) -> int:
         "amount": _normalize_decimal(payload.get("amount")),
         "currency": payload.get("currency", DEFAULT_OPPORTUNITY_CURRENCY),
         "conversion_rate_to_cad": _normalize_decimal(payload.get("conversion_rate_to_cad"))
-        or Decimal("1"),
+        or Decimal(1),
         "probability": payload.get("probability", 10),
         "expected_close_date": _normalize_date(payload.get("expected_close_date")),
         "close_date": _normalize_date(payload.get("close_date")),
@@ -138,7 +138,7 @@ def update_opportunity(opportunity_id: int, payload: dict) -> None:
         "amount": _normalize_decimal(payload.get("amount")),
         "currency": payload.get("currency", DEFAULT_OPPORTUNITY_CURRENCY),
         "conversion_rate_to_cad": _normalize_decimal(payload.get("conversion_rate_to_cad"))
-        or Decimal("1"),
+        or Decimal(1),
         "probability": payload.get("probability", 10),
         "expected_close_date": _normalize_date(payload.get("expected_close_date")),
         "close_date": _normalize_date(payload.get("close_date")),

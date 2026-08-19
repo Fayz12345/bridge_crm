@@ -1,28 +1,37 @@
 import logging
 from typing import Any
 
-from markupsafe import Markup, escape
-from flask import Flask, g, has_request_context, jsonify, redirect, request, session, url_for
+from flask import (
+    Flask,
+    g,
+    has_request_context,
+    jsonify,
+    redirect,
+    request,
+    session,
+    url_for,
+)
 from flask_wtf.csrf import CSRFProtect
+from markupsafe import Markup, escape
 from sqlalchemy import text
 from werkzeug.middleware.proxy_fix import ProxyFix
 
-from bridge_crm.config import Settings, get_settings
 from bridge_crm.api.lead_capture import lead_capture_bp
-from bridge_crm.api.whatsapp_webhook import whatsapp_webhook_bp
 from bridge_crm.api.wati_webhook import wati_webhook_bp
-from bridge_crm.crm.communications.routes import communications_bp
+from bridge_crm.api.whatsapp_webhook import whatsapp_webhook_bp
+from bridge_crm.config import Settings, get_settings
 from bridge_crm.crm.accounts.routes import accounts_bp
 from bridge_crm.crm.auth.queries import get_user_by_id
 from bridge_crm.crm.auth.routes import auth_bp
+from bridge_crm.crm.communications.routes import communications_bp
 from bridge_crm.crm.custom_fields.routes import custom_fields_bp
 from bridge_crm.crm.dashboard.routes import dashboard_bp
 from bridge_crm.crm.leads.routes import leads_bp
 from bridge_crm.crm.notifications.queries import count_unread_notifications
 from bridge_crm.crm.notifications.routes import notifications_bp
 from bridge_crm.crm.opportunities.routes import opportunities_bp
-from bridge_crm.crm.purchases.routes import purchases_bp
 from bridge_crm.crm.products.routes import products_bp
+from bridge_crm.crm.purchases.routes import purchases_bp
 from bridge_crm.crm.reports.routes import reports_bp
 from bridge_crm.crm.setup.routes import setup_bp
 from bridge_crm.crm.users.routes import users_bp

@@ -2,7 +2,18 @@ import re
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
-from flask import Blueprint, abort, flash, g, jsonify, redirect, render_template, request, send_file, url_for
+from flask import (
+    Blueprint,
+    abort,
+    flash,
+    g,
+    jsonify,
+    redirect,
+    render_template,
+    request,
+    send_file,
+    url_for,
+)
 
 from bridge_crm.crm.activities.queries import list_activities, log_activity
 from bridge_crm.crm.auth.queries import (
@@ -20,11 +31,22 @@ from bridge_crm.crm.documents.queries import (
     get_document_for_opportunity,
     list_documents_for_opportunity,
 )
-from bridge_crm.crm.emails.queries import create_email, list_emails, mark_email_failed, mark_email_sent
+from bridge_crm.crm.emails.queries import (
+    create_email,
+    list_emails,
+    mark_email_failed,
+    mark_email_sent,
+)
 from bridge_crm.crm.notifications.queries import create_notification
+from bridge_crm.crm.opportunities.constants import (
+    DEFAULT_OPPORTUNITY_CURRENCY,
+    OPPORTUNITY_CURRENCY_CODES,
+    OPPORTUNITY_CURRENCY_OPTIONS,
+    OPPORTUNITY_STAGE_KEYS,
+)
 from bridge_crm.crm.opportunities.queries import (
-    create_opportunity_line,
     create_opportunity,
+    create_opportunity_line,
     delete_opportunity,
     delete_opportunity_line,
     get_opportunity,
@@ -36,20 +58,17 @@ from bridge_crm.crm.opportunities.queries import (
     list_contacts_for_account_select,
     list_opportunities,
     opportunities_by_stage,
+    update_opportunity,
     update_opportunity_line,
     update_opportunity_stage,
-    update_opportunity,
     upsert_pipeline_stage,
-)
-from bridge_crm.crm.opportunities.constants import (
-    OPPORTUNITY_CURRENCY_CODES,
-    DEFAULT_OPPORTUNITY_CURRENCY,
-    OPPORTUNITY_CURRENCY_OPTIONS,
-    OPPORTUNITY_STAGE_KEYS,
 )
 from bridge_crm.crm.products.queries import list_product_stock_groups
 from bridge_crm.integrations.email_sender import send_email, smtp_configured
-from bridge_crm.integrations.pdf_generator import generate_sales_order_pdf, generate_quote_pdf
+from bridge_crm.integrations.pdf_generator import (
+    generate_quote_pdf,
+    generate_sales_order_pdf,
+)
 
 opportunities_bp = Blueprint(
     "opportunities",
@@ -185,7 +204,7 @@ def _create_mention_notifications(opportunity: dict, mentions: list[dict], note:
                         f"Open the CRM record: {link_url}"
                     ),
                 )
-            except Exception:
+            except Exception:  # noqa: BLE001,S110
                 pass
 
 
@@ -529,7 +548,7 @@ def add_line_view(opportunity_id: int):
                 "notes": request.form.get("notes", "").strip() or None,
             }
         )
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         flash(f"Could not add quote line: {exc}", "danger")
         return redirect(url_for("opportunities.detail_view", opportunity_id=opportunity_id))
 
@@ -573,7 +592,7 @@ def edit_line_view(opportunity_id: int, line_id: int):
                 "notes": request.form.get("notes", "").strip() or None,
             },
         )
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         flash(f"Could not update quote line: {exc}", "danger")
         return redirect(url_for("opportunities.detail_view", opportunity_id=opportunity_id))
 
@@ -637,7 +656,7 @@ def generate_quote_view(opportunity_id: int):
         document = generate_quote_pdf(opportunity_id, g.user["id"])
         flash("Quote PDF generated and attached to the email form.", "success")
         return redirect(_detail_url(opportunity_id, document["id"]))
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         flash(f"Quote PDF could not be generated: {exc}", "warning")
         return redirect(url_for("opportunities.detail_view", opportunity_id=opportunity_id))
 
@@ -657,7 +676,7 @@ def generate_sales_order_view(opportunity_id: int):
         document = generate_sales_order_pdf(opportunity_id, g.user["id"])
         flash("Sales Order PDF generated and attached to the email form.", "success")
         return redirect(_detail_url(opportunity_id, document["id"]))
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         flash(f"Sales Order PDF could not be generated: {exc}", "warning")
         return redirect(url_for("opportunities.detail_view", opportunity_id=opportunity_id))
 
@@ -760,7 +779,7 @@ def send_email_view(opportunity_id: int):
             {"email_id": email_id, "attachments": attachment_metadata},
         )
         flash("Email sent.", "success")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         mark_email_failed(email_id, str(exc))
         flash(f"Email could not be sent: {exc}", "warning")
 

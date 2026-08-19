@@ -1,4 +1,4 @@
-# Flask
+# Flask  # noqa: N999  (config template, not an importable module)
 CRM_APP_NAME = "Bridge CRM"
 SECRET_KEY = "replace-with-a-random-64-char-secret"
 COMPANY_NAME = "Bridge Wireless"

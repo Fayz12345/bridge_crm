@@ -1,19 +1,29 @@
-from functools import wraps
 import hashlib
 import secrets
 from datetime import datetime, timedelta, timezone
+from functools import wraps
 from urllib.parse import urlparse
 
-from flask import Blueprint, current_app, flash, g, redirect, render_template, request, session, url_for
+from flask import (
+    Blueprint,
+    current_app,
+    flash,
+    g,
+    redirect,
+    render_template,
+    request,
+    session,
+    url_for,
+)
 from sqlalchemy import func, insert, select
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from bridge_crm.crm.auth.queries import (
     clear_login_attempts,
-    create_password_reset_token,
     count_recent_failed_attempts,
-    get_user_by_email,
+    create_password_reset_token,
     get_active_password_reset_token,
+    get_user_by_email,
     invalidate_password_reset_tokens,
     mark_password_reset_token_used,
     record_login_attempt,

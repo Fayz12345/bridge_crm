@@ -2,6 +2,10 @@ from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import func, select
 
+from bridge_crm.crm.opportunities.constants import (
+    OPEN_OPPORTUNITY_STAGES,
+    opportunity_amount_cad_expression,
+)
 from bridge_crm.db.engine import get_connection
 from bridge_crm.db.schema import (
     crm_accounts,
@@ -10,10 +14,6 @@ from bridge_crm.db.schema import (
     crm_opportunity_lines,
     crm_pipeline_stages,
     crm_users,
-)
-from bridge_crm.crm.opportunities.constants import (
-    OPEN_OPPORTUNITY_STAGES,
-    opportunity_amount_cad_expression,
 )
 
 RANGE_OPTIONS = [

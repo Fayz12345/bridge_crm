@@ -177,7 +177,7 @@ def main() -> None:
 
     try:
         result = run_sync(full=args.full)
-    except Exception:
+    except Exception:  # noqa: BLE001
         sys.exit(1)
 
     print(

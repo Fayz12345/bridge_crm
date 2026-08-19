@@ -3,7 +3,12 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import func, insert, or_, select, update
 
 from bridge_crm.db.engine import get_connection
-from bridge_crm.db.schema import crm_accounts, crm_contacts, crm_leads, crm_whatsapp_messages
+from bridge_crm.db.schema import (
+    crm_accounts,
+    crm_contacts,
+    crm_leads,
+    crm_whatsapp_messages,
+)
 
 
 def create_whatsapp_message(
