@@ -116,6 +116,7 @@ def looks_like_inbound(payload: dict[str, Any]) -> bool:
     return bool(body and extract_wa_id(payload))
 
 
+
 def extract_wa_id(payload: dict[str, Any]) -> str | None:
     candidates = [
         payload.get("waId"),
