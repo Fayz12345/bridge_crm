@@ -55,9 +55,10 @@ def _auth_headers() -> dict[str, str]:
         token = f"Bearer {token}"
     return {
         "Authorization": token,
-        "Accept": "application/json",
+        "Accept": "application/json, text/plain;q=0.9, */*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
         # Cloudflare on Wati blocks the default Python-urllib user-agent (error 1010).
-        "User-Agent": "BridgeCRM/1.0 (+https://crm.bridge-renew.net)",
+        "User-Agent": "Mozilla/5.0 BridgeCRM/1.0 (+https://crm.bridge-renew.net)",
     }
 
 
@@ -89,14 +90,14 @@ def _api_request(
     api_request = request.Request(url, data=data, method=method, headers=headers)
     try:
         with request.urlopen(api_request, timeout=timeout) as response:
-            body = response.read().decode("utf-8")
-            return json.loads(body) if body else {}
+            body = response.read().decode("utf-8", errors="replace")
+            return _parse_json_body(body, status_code=getattr(response, "status", None))
     except error.HTTPError as exc:
         detail = exc.read().decode("utf-8", errors="replace")
         parsed: dict[str, Any] = {}
         message = detail or str(exc)
         try:
-            parsed = json.loads(detail)
+            parsed = json.loads(detail) if detail.strip() else {}
             message = (
                 parsed.get("info")
                 or parsed.get("message")
@@ -107,10 +108,35 @@ def _api_request(
             if isinstance(message, dict):
                 message = json.dumps(message)
         except json.JSONDecodeError:
-            pass
-        raise WatiAPIError(str(message), status_code=exc.code, payload=parsed) from exc
+            message = _non_json_error(detail, status_code=exc.code)
+        raise WatiAPIError(str(message)[:500], status_code=exc.code, payload=parsed) from exc
     except error.URLError as exc:
         raise WatiAPIError(str(getattr(exc, "reason", None) or exc)) from exc
+
+
+def _parse_json_body(body: str, *, status_code: int | None = None) -> dict[str, Any]:
+    text = (body or "").strip()
+    if not text:
+        return {}
+    try:
+        parsed = json.loads(text)
+    except json.JSONDecodeError as exc:
+        raise WatiAPIError(_non_json_error(text, status_code=status_code), status_code=status_code) from exc
+    if isinstance(parsed, dict):
+        return parsed
+    return {"result": parsed}
+
+
+def _non_json_error(body: str, *, status_code: int | None = None) -> str:
+    text = re.sub(r"\s+", " ", (body or "")).strip()
+    prefix = f"Wati HTTP {status_code}: " if status_code else "Wati: "
+    if text.lstrip().startswith("<"):
+        return (
+            f"{prefix}returned an HTML page instead of JSON. "
+            "This is often a Cloudflare block or an incorrect WATI_API_ENDPOINT."
+        )
+    preview = text[:180] or "(empty response)"
+    return f"{prefix}returned a non-JSON response: {preview}"
 
 
 def send_session_message(to_number: str, message: str) -> dict[str, Any]:

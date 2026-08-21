@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+import logging
 
 from flask import flash, g, render_template
 
@@ -16,6 +17,8 @@ from bridge_crm.integrations.whatsapp import (
     templates_ready,
     whatsapp_configured,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def render_bulk_whatsapp_page(
@@ -151,7 +154,8 @@ def _send_wati_broadcast(
             template_name=template,
             broadcast_name=campaign,
         )
-    except WhatsAppAPIError:
+    except WhatsAppAPIError as exc:
+        logger.warning("Wati bulk broadcast failed (%s); sending one by one.", exc)
         return False
 
     for item in receivers:
