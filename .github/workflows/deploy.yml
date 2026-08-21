@@ -1,47 +1,107 @@
 name: Deploy
 
+# Runs on a SELF-HOSTED runner installed on the EC2 box, so no inbound SSH /
+# open ports / stored keys are needed. The runner deploys locally on the server.
+#
+#   push to main  ->  CI passes  ->  auto-deploy to DEV (dev.crm.bridge-renew.net)
+#   Run workflow  ->  choose "production"  ->  deploy PROD (crm.bridge-renew.net)
+#
+# Production is intentionally manual (workflow_dispatch) so main pushes never
+# touch prod on their own.
+
 on:
   workflow_run:
     workflows: [CI]
     types: [completed]
-    branches: [main, sandbox]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Environment to deploy
+        type: choice
+        options: [dev, production]
+        default: dev
+
+concurrency:
+  group: deploy-${{ github.event.inputs.target || 'dev' }}
+  cancel-in-progress: false
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    # Auto runs only proceed when CI succeeded; manual runs always proceed.
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: self-hosted
     steps:
-      - name: Determine environment
+      - name: Check out the built commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.ref }}
+
+      - name: Resolve target environment
         id: env
         run: |
-          BRANCH="${{ github.event.workflow_run.head_branch }}"
-          if [ "$BRANCH" = "main" ]; then
-            echo "target=production" >> "$GITHUB_OUTPUT"
-            echo "app_dir=/home/ubuntu/bridge_crm" >> "$GITHUB_OUTPUT"
-            echo "service=bridge-crm" >> "$GITHUB_OUTPUT"
-          elif [ "$BRANCH" = "sandbox" ]; then
-            echo "target=sandbox" >> "$GITHUB_OUTPUT"
-            echo "app_dir=/home/ubuntu/bridge_crm_sandbox" >> "$GITHUB_OUTPUT"
-            echo "service=bridge-crm-sandbox" >> "$GITHUB_OUTPUT"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TARGET="${{ github.event.inputs.target }}"
+          else
+            TARGET="dev"
+          fi
+          echo "target=$TARGET" >> "$GITHUB_OUTPUT"
+          if [ "$TARGET" = "production" ]; then
+            echo "dir=/home/ubuntu/bridge_crm"                   >> "$GITHUB_OUTPUT"
+            echo "service=bridge-crm"                            >> "$GITHUB_OUTPUT"
+            echo "runtime=/opt/crm-runtime"                      >> "$GITHUB_OUTPUT"
+            echo "db=bridge_crm"                                 >> "$GITHUB_OUTPUT"
+            echo "health=https://crm.bridge-renew.net/health"    >> "$GITHUB_OUTPUT"
+          else
+            echo "dir=/home/ubuntu/bridge_crm_sandbox"           >> "$GITHUB_OUTPUT"
+            echo "service=bridge-crm-sandbox"                    >> "$GITHUB_OUTPUT"
+            echo "runtime=/opt/crm-runtime-sandbox"              >> "$GITHUB_OUTPUT"
+            echo "db=bridge_crm_sandbox"                         >> "$GITHUB_OUTPUT"
+            echo "health=https://dev.crm.bridge-renew.net/health" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Deploy to ${{ steps.env.outputs.target }}
-        if: steps.env.outputs.target != ''
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
-            cd ${{ steps.env.outputs.app_dir }}
-            git fetch origin
-            git reset --hard origin/${{ github.event.workflow_run.head_branch }}
-            source /home/ubuntu/crm-env/bin/activate
-            pip install -r requirements.txt --quiet
-            sudo systemctl restart ${{ steps.env.outputs.service }}
-            sleep 3
-            if [ "${{ steps.env.outputs.target }}" = "production" ]; then
-              curl -sf https://crm.bridge-renew.net/health || echo "WARNING: Health check failed"
-            else
-              curl -sf https://dev.crm.bridge-renew.net/health || echo "WARNING: Health check failed"
-            fi
+        env:
+          DIR: ${{ steps.env.outputs.dir }}
+          SERVICE: ${{ steps.env.outputs.service }}
+          RUNTIME: ${{ steps.env.outputs.runtime }}
+          DB: ${{ steps.env.outputs.db }}
+          HEALTH: ${{ steps.env.outputs.health }}
+        run: |
+          set -euo pipefail
+          GRP=crm-app:crm-shared
+          PY=/home/ubuntu/crm-env/bin/python3
+
+          echo "::group::Backup DB + code"
+          TS=$(date +%Y%m%d_%H%M%S)
+          sudo mkdir -p /home/ubuntu/backups
+          sudo -u postgres pg_dump -Fc "$DB" > "/home/ubuntu/backups/db_${DB}_${TS}.dump"
+          sudo cp -a "$DIR" "/home/ubuntu/backups/code_$(basename "$DIR")_${TS}"
+          echo "::endgroup::"
+
+          echo "::group::Sync tracked code (.env and data/ preserved)"
+          sudo rsync -a --delete \
+            --exclude='.env' \
+            --exclude='data/' \
+            --exclude='.git/' \
+            --exclude='.github/' \
+            "$GITHUB_WORKSPACE"/ "$DIR"/
+          sudo chown -R "$GRP" "$DIR"
+          sudo chmod 600 "$DIR/.env"
+          echo "::endgroup::"
+
+          echo "::group::Install dependencies"
+          "$PY" -m pip install -r "$DIR/requirements.txt" --quiet
+          echo "::endgroup::"
+
+          echo "::group::Migrate schema (idempotent bootstrap)"
+          sudo -u crm-app PYTHONPATH="$RUNTIME" "$PY" -m bridge_crm.scripts.bootstrap_db
+          echo "::endgroup::"
+
+          echo "::group::Restart service + health check"
+          sudo systemctl restart "$SERVICE"
+          sleep 3
+          curl -sf "$HEALTH"
+          echo
+          echo "Deployed $GITHUB_SHA to ${{ steps.env.outputs.target }}"
+          echo "::endgroup::"
