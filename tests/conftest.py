@@ -1,6 +1,14 @@
 import os
+import sys
+from pathlib import Path
 
 import pytest
+
+# Repo root is the `bridge_crm` package; parent must be on sys.path for imports.
+_REPO_ROOT = Path(__file__).resolve().parents[1]
+_PACKAGE_PARENT = _REPO_ROOT.parent
+if str(_PACKAGE_PARENT) not in sys.path:
+    sys.path.insert(0, str(_PACKAGE_PARENT))
 
 os.environ.setdefault("SECRET_KEY", "test-secret-key-for-pytest-only")
 os.environ.setdefault("CRM_DB_PASSWORD", "test_password")
