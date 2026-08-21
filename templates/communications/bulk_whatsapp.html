@@ -13,7 +13,7 @@
       {% elif whatsapp_api_ready %}
       Wati is connected, but set <code>WHATSAPP_DEFAULT_TEMPLATE</code> to enable broadcasts.
       {% else %}
-      Prepare one message and open individual WhatsApp chats for the selected records.
+      Open individual WhatsApp chats for the selected records.
       {% endif %}
     </p>
   </div>
@@ -71,21 +71,9 @@
             {% else %}
             <input class="form-control" id="template_name" name="template_name" value="{{ template_name or default_template }}">
             {% endif %}
-            <div class="form-text">Only approved templates can be sent. Manage them on the <a href="{{ url_for('communications.templates_view') }}">templates</a> page.</div>
+            <div class="form-text">Recipients receive this approved template as-is. Manage templates on the <a href="{{ url_for('communications.templates_view') }}">templates</a> page.</div>
           </div>
           {% endif %}
-
-          <div class="mb-3">
-            <label class="form-label" for="body_text">Message</label>
-            <textarea class="form-control" id="body_text" name="body_text" rows="10" required>{{ body_text or '' }}</textarea>
-            {% if whatsapp_templates_ready %}
-            <div class="form-text">
-              Fills the message body parameter on template <strong>{{ template_name or default_template }}</strong>. Each recipient still gets their own name.
-            </div>
-            {% else %}
-            <div class="form-text">Update the message and click Generate Links to refresh the chat links below.</div>
-            {% endif %}
-          </div>
 
           <div class="d-flex flex-wrap gap-2">
             <button class="btn btn-outline-primary" type="submit" name="action" value="preview">
@@ -121,7 +109,7 @@
             {% if record.whatsapp_number %}
             <a
               class="btn btn-sm btn-outline-success"
-              href="https://wa.me/{{ record.whatsapp_number.replace('+', '') }}?text={{ (body_text or '')|urlencode }}"
+              href="https://wa.me/{{ record.whatsapp_number.replace('+', '') }}"
               target="_blank"
               rel="noopener">
               Open Chat

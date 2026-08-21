@@ -26,7 +26,7 @@ def render_bulk_whatsapp_page(
     *,
     records: list[dict],
     return_to: str,
-    body_text: str,
+    body_text: str = "",
     entity_label: str,
     compose_endpoint: str,
     send_endpoint: str,
@@ -61,7 +61,7 @@ def render_bulk_whatsapp_page(
 def send_bulk_whatsapp(
     *,
     records: list[dict],
-    body_text: str,
+    body_text: str = "",
     related_type: str,
     return_to: str,
     broadcast_name: str = "",
@@ -75,9 +75,7 @@ def send_bulk_whatsapp(
         )
         return False
 
-    if not body_text.strip():
-        flash("Message body is required for bulk WhatsApp sends.", "danger")
-        return False
+    body_text = (body_text or "").strip()
 
     settings = get_settings()
     template = (template_name or settings.whatsapp_default_template).strip()
@@ -170,7 +168,7 @@ def _send_wati_broadcast(
             to_number=item["whatsapp_number"],
             from_number=None,
             message_type="template",
-            body=body_text,
+            body=body_text or f"Template {template}",
             template_name=template,
             status="sent",
             wa_message_id=None,
@@ -219,7 +217,7 @@ def _send_one_by_one(
                 to_number=phone,
                 from_number=None,
                 message_type="template",
-                body=body_text,
+                body=body_text or f"Template {template}",
                 template_name=template,
                 status="sent",
                 wa_message_id=wa_message_id,
@@ -242,7 +240,7 @@ def _send_one_by_one(
                 to_number=phone,
                 from_number=None,
                 message_type="template",
-                body=body_text,
+                body=body_text or f"Template {template}",
                 template_name=template,
                 status="failed",
                 wa_message_id=None,
