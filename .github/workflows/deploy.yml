@@ -71,10 +71,12 @@ jobs:
           set -euo pipefail
           GRP=crm-app:crm-shared
           PY=/home/ubuntu/crm-env/bin/python3
+          command -v rsync >/dev/null || sudo apt-get install -y rsync
 
           echo "::group::Backup DB + code"
           TS=$(date +%Y%m%d_%H%M%S)
           sudo mkdir -p /home/ubuntu/backups
+          sudo chown ubuntu:ubuntu /home/ubuntu/backups
           sudo -u postgres pg_dump -Fc "$DB" > "/home/ubuntu/backups/db_${DB}_${TS}.dump"
           sudo cp -a "$DIR" "/home/ubuntu/backups/code_$(basename "$DIR")_${TS}"
           echo "::endgroup::"
