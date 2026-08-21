@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}{{ template.element_name }} | {{ config.APP_NAME }}{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
+  <div>
+    <p class="text-uppercase small fw-semibold text-body-secondary mb-1">WhatsApp template</p>
+    <h1 class="h3 mb-1">{{ template.element_name }}</h1>
+    <p class="text-body-secondary mb-0">{{ template.category }} · {{ template.language }}</p>
+  </div>
+  <div class="d-flex flex-wrap gap-2">
+    <a class="btn btn-outline-secondary" href="{{ url_for('communications.templates_view') }}"><span class="material-symbols-outlined">arrow_back</span> All templates</a>
+    {% if template.status != 'cancelled' %}
+    <form method="post" action="{{ url_for('communications.cancel_template_view', template_id=template.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="btn btn-outline-danger" type="submit" data-confirm="Cancel this template? It will be marked cancelled in CRM and deleted in Wati if possible.">
+        <span class="material-symbols-outlined">cancel</span> Cancel template
+      </button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-4">
+    <div class="crm-card">
+      <div class="card-body">
+        <div class="mb-3">
+          <div class="small text-uppercase text-body-secondary fw-semibold mb-1">Status</div>
+          {% if template.status == 'approved' %}
+          <span class="badge text-bg-success">Approved</span>
+          {% elif template.status == 'cancelled' %}
+          <span class="badge text-bg-secondary">Cancelled</span>
+          {% else %}
+          <span class="badge text-bg-warning">Pending</span>
+          {% endif %}
+          {% if template.wati_status %}
+          <div class="small text-body-secondary mt-2">Wati: {{ template.wati_status }}</div>
+          {% endif %}
+        </div>
+        <div class="mb-3">
+          <div class="small text-uppercase text-body-secondary fw-semibold mb-1">Created by</div>
+          <div>{{ template.created_by_name or "—" }}</div>
+        </div>
+        <div class="mb-3">
+          <div class="small text-uppercase text-body-secondary fw-semibold mb-1">Last synced</div>
+          <div>{{ template.last_synced_at.strftime("%Y-%m-%d %H:%M") if template.last_synced_at else "—" }}</div>
+        </div>
+        {% if template.wati_template_id %}
+        <div class="small text-body-secondary">Wati ID {{ template.wati_template_id }}</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-8">
+    <div class="crm-card">
+      <div class="card-body">
+        {% if template.header_text %}
+        <div class="fw-semibold mb-2">{{ template.header_text }}</div>
+        {% endif %}
+        <div class="mb-3" style="white-space:pre-wrap">{{ template.body }}</div>
+        {% if template.footer %}
+        <div class="small text-body-secondary">{{ template.footer }}</div>
+        {% endif %}
+        {% if template.custom_params %}
+        <hr>
+        <div class="small text-uppercase text-body-secondary fw-semibold mb-2">Variables</div>
+        {% for param in template.custom_params %}
+        <span class="badge text-bg-light me-1 mb-1">{{ param.paramName }}{% if param.paramValue %} = {{ param.paramValue }}{% endif %}</span>
+        {% endfor %}
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

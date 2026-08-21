@@ -131,6 +131,50 @@ def send_template_broadcast(
         raise WhatsAppAPIError(str(exc), status_code=getattr(exc, "status_code", None), payload=getattr(exc, "payload", None)) from exc
 
 
+def list_message_templates(*, page_size: int = 100, page_number: int = 1) -> dict[str, Any]:
+    try:
+        if provider_name() != "wati":
+            raise WhatsAppAPIError("Template listing is available when WHATSAPP_PROVIDER=wati.")
+        return wati.list_message_templates(page_size=page_size, page_number=page_number)
+    except (wati.WatiAPIError, meta_whatsapp.WhatsAppAPIError) as exc:
+        raise WhatsAppAPIError(str(exc), status_code=getattr(exc, "status_code", None), payload=getattr(exc, "payload", None)) from exc
+
+
+def create_message_template(
+    *,
+    element_name: str,
+    category: str,
+    language: str,
+    body: str,
+    footer: str | None = None,
+    header_text: str | None = None,
+    custom_params: list[dict[str, str]] | None = None,
+) -> dict[str, Any]:
+    try:
+        if provider_name() != "wati":
+            raise WhatsAppAPIError("Template creation is available when WHATSAPP_PROVIDER=wati.")
+        return wati.create_message_template(
+            element_name=element_name,
+            category=category,
+            language=language,
+            body=body,
+            footer=footer,
+            header_text=header_text,
+            custom_params=custom_params,
+        )
+    except (wati.WatiAPIError, meta_whatsapp.WhatsAppAPIError) as exc:
+        raise WhatsAppAPIError(str(exc), status_code=getattr(exc, "status_code", None), payload=getattr(exc, "payload", None)) from exc
+
+
+def delete_message_template(element_name: str, *, language: str | None = None) -> dict[str, Any]:
+    try:
+        if provider_name() != "wati":
+            raise WhatsAppAPIError("Template cancellation is available when WHATSAPP_PROVIDER=wati.")
+        return wati.delete_message_template(element_name, language=language)
+    except (wati.WatiAPIError, meta_whatsapp.WhatsAppAPIError) as exc:
+        raise WhatsAppAPIError(str(exc), status_code=getattr(exc, "status_code", None), payload=getattr(exc, "payload", None)) from exc
+
+
 def get_conversation_messages(whatsapp_number: str) -> dict[str, Any]:
     try:
         if provider_name() != "wati":

@@ -1,4 +1,4 @@
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask import Blueprint, flash, g, redirect, render_template, request, url_for
 
 from bridge_crm.crm.accounts.queries import get_accounts_by_ids, list_accounts
 from bridge_crm.crm.auth.routes import login_required
@@ -12,7 +12,24 @@ from bridge_crm.crm.communications.whatsapp_thread import (
 )
 from bridge_crm.crm.leads.queries import get_leads_by_ids, list_leads
 from bridge_crm.crm.whatsapp.queries import list_recent_conversations
-from bridge_crm.integrations.whatsapp import templates_ready, whatsapp_configured
+from bridge_crm.crm.whatsapp.template_queries import (
+    count_templates_by_status,
+    get_whatsapp_template,
+    has_approved_template,
+    list_whatsapp_templates,
+)
+from bridge_crm.crm.whatsapp.templates import (
+    TEMPLATE_CATEGORIES,
+    TEMPLATE_LANGUAGES,
+    cancel_template,
+    submit_template,
+    sync_templates_from_wati,
+)
+from bridge_crm.integrations.whatsapp import (
+    WhatsAppAPIError,
+    templates_ready,
+    whatsapp_configured,
+)
 
 communications_bp = Blueprint(
     "communications",
@@ -87,14 +104,19 @@ def _account_rows(accounts: list[dict]) -> list[dict]:
     return rows
 
 
+def _whatsapp_templates_ready() -> bool:
+    return templates_ready() or has_approved_template()
+
+
 @communications_bp.route("/")
 @login_required
 def inbox_view():
     return render_template(
         "communications/inbox.html",
         conversations=list_recent_conversations(),
+        template_counts=count_templates_by_status(),
         whatsapp_api_ready=whatsapp_configured(),
-        whatsapp_templates_ready=templates_ready(),
+        whatsapp_templates_ready=_whatsapp_templates_ready(),
     )
 
 
@@ -155,7 +177,7 @@ def broadcast_view():
         search_term=search_term,
         available_count=sum(1 for row in records if row.get("whatsapp_number")),
         whatsapp_api_ready=whatsapp_configured(),
-        whatsapp_templates_ready=templates_ready(),
+        whatsapp_templates_ready=_whatsapp_templates_ready(),
     )
 
 
@@ -211,3 +233,99 @@ def _records_for_ids(entity: str, selected_ids: list[int]) -> list[dict]:
     if entity == "accounts":
         return _account_rows(get_accounts_by_ids(selected_ids))
     return _lead_rows(get_leads_by_ids(selected_ids))
+
+
+@communications_bp.route("/templates")
+@login_required
+def templates_view():
+    status = (request.args.get("status") or "").strip().lower()
+    if status not in {"pending", "approved", "cancelled"}:
+        status = ""
+    return render_template(
+        "communications/templates.html",
+        templates=list_whatsapp_templates(status or None),
+        status=status or "all",
+        template_counts=count_templates_by_status(),
+        whatsapp_api_ready=whatsapp_configured(),
+    )
+
+
+@communications_bp.route("/templates/sync", methods=["POST"])
+@login_required
+def sync_templates_view():
+    if not whatsapp_configured():
+        flash("Connect Wati before syncing templates.", "danger")
+        return redirect(url_for("communications.templates_view"))
+    try:
+        result = sync_templates_from_wati(created_by=g.user["id"])
+    except WhatsAppAPIError as exc:
+        flash(str(exc), "danger")
+        return redirect(url_for("communications.templates_view"))
+    flash(f"Synced {result['synced']} template(s) from Wati.", "success")
+    return redirect(url_for("communications.templates_view"))
+
+
+@communications_bp.route("/templates/new", methods=["GET", "POST"])
+@login_required
+def create_template_view():
+    form_data = request.form if request.method == "POST" else {
+        "category": "MARKETING",
+        "language": "en",
+        "body": "Hi {{name}}, this is {{rep_name}} from Bridge Wireless. {{message}}",
+    }
+    if request.method == "POST":
+        if not whatsapp_configured():
+            flash("Connect Wati before creating a template.", "danger")
+        else:
+            try:
+                template_id = submit_template(
+                    element_name=request.form.get("element_name", ""),
+                    category=request.form.get("category", "MARKETING"),
+                    language=request.form.get("language", "en"),
+                    body=request.form.get("body", ""),
+                    footer=request.form.get("footer", "").strip() or None,
+                    header_text=request.form.get("header_text", "").strip() or None,
+                    created_by=g.user["id"],
+                )
+                flash("Template submitted to Wati. Status starts as pending until Meta approves it.", "success")
+                return redirect(url_for("communications.template_detail_view", template_id=template_id))
+            except ValueError as exc:
+                flash(str(exc), "danger")
+            except WhatsAppAPIError as exc:
+                flash(str(exc), "danger")
+    return render_template(
+        "communications/template_form.html",
+        form_data=form_data,
+        categories=TEMPLATE_CATEGORIES,
+        languages=TEMPLATE_LANGUAGES,
+        whatsapp_api_ready=whatsapp_configured(),
+    )
+
+
+@communications_bp.route("/templates/<int:template_id>")
+@login_required
+def template_detail_view(template_id: int):
+    template = get_whatsapp_template(template_id)
+    if not template:
+        flash("Template not found.", "danger")
+        return redirect(url_for("communications.templates_view"))
+    return render_template("communications/template_detail.html", template=template)
+
+
+@communications_bp.route("/templates/<int:template_id>/cancel", methods=["POST"])
+@login_required
+def cancel_template_view(template_id: int):
+    try:
+        updated = cancel_template(template_id)
+    except ValueError as exc:
+        flash(str(exc), "danger")
+        return redirect(url_for("communications.templates_view"))
+    if updated.get("wati_error"):
+        flash(
+            "Marked cancelled in CRM. Wati cancel failed: " + updated["wati_error"],
+            "warning",
+        )
+    else:
+        flash("Template cancelled.", "success")
+    return redirect(url_for("communications.template_detail_view", template_id=template_id))
+

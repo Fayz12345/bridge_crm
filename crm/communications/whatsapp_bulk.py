@@ -6,6 +6,7 @@ from flask import flash, g, render_template
 from bridge_crm.config import get_settings
 from bridge_crm.crm.activities.queries import log_activity
 from bridge_crm.crm.whatsapp.queries import create_whatsapp_message
+from bridge_crm.crm.whatsapp.template_queries import list_approved_templates
 from bridge_crm.integrations.wati import outreach_parameters
 from bridge_crm.integrations.whatsapp import (
     WhatsAppAPIError,
@@ -35,6 +36,8 @@ def render_bulk_whatsapp_page(
 ):
     ready = whatsapp_configured()
     settings = get_settings()
+    approved_templates = list_approved_templates() if ready else []
+    templates_are_ready = templates_ready() or bool(approved_templates)
     return render_template(
         "communications/bulk_whatsapp.html",
         records=records,
@@ -48,9 +51,10 @@ def render_bulk_whatsapp_page(
         send_endpoint=send_endpoint,
         entity=entity,
         whatsapp_api_ready=ready,
-        whatsapp_templates_ready=templates_ready(),
+        whatsapp_templates_ready=templates_are_ready,
         whatsapp_provider=provider_name() if ready else "",
         default_template=settings.whatsapp_default_template if ready else "",
+        approved_templates=approved_templates,
     )
 
 
@@ -71,16 +75,15 @@ def send_bulk_whatsapp(
         )
         return False
 
-    if not templates_ready() and not (template_name or "").strip():
-        flash("Set WHATSAPP_DEFAULT_TEMPLATE (an approved Wati template) before broadcasting.", "danger")
-        return False
-
     if not body_text.strip():
         flash("Message body is required for bulk WhatsApp sends.", "danger")
         return False
 
     settings = get_settings()
     template = (template_name or settings.whatsapp_default_template).strip()
+    if not template:
+        flash("Choose an approved WhatsApp template before broadcasting.", "danger")
+        return False
     campaign = (broadcast_name or "").strip() or _default_broadcast_name(related_type)
     rep_name = (g.user or {}).get("full_name") or "Bridge Wireless"
     skipped_count = sum(1 for record in records if not record.get("whatsapp_number"))

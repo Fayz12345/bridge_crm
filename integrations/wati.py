@@ -312,6 +312,91 @@ def get_messages(whatsapp_number: str, *, page_size: int = 100, page_number: int
     )
 
 
+def list_message_templates(*, page_size: int = 100, page_number: int = 1) -> dict[str, Any]:
+    """Fetch Wati message templates, including approval status."""
+    settings = get_settings()
+    query: dict[str, Any] = {
+        "pageSize": max(1, min(page_size, 100)),
+        "pageNumber": max(1, page_number),
+    }
+    if settings.wati_channel_number.strip():
+        query["channelPhoneNumber"] = settings.wati_channel_number.strip()
+    return _api_request("GET", "/api/v1/getMessageTemplates", query=query)
+
+
+def create_message_template(
+    *,
+    element_name: str,
+    category: str,
+    language: str,
+    body: str,
+    footer: str | None = None,
+    header_text: str | None = None,
+    custom_params: list[dict[str, str]] | None = None,
+) -> dict[str, Any]:
+    """Submit a new WhatsApp template to Wati/Meta for review."""
+    header_value = (header_text or "").strip()
+    payload: dict[str, Any] = {
+        "type": "template",
+        "category": category,
+        "subCategory": "STANDARD",
+        "buttonsType": "NONE",
+        "buttons": [],
+        "elementName": element_name,
+        "language": language,
+        "header": {
+            "type": "text" if header_value else "none",
+            "text": header_value or None,
+            "link": "",
+            "mediaFromPC": "",
+            "mediaHeaderId": "",
+        },
+        "body": body,
+        "customParams": custom_params or [],
+        "creationMethod": 0,
+    }
+    if (footer or "").strip():
+        payload["footer"] = footer.strip()
+
+    response = _api_request("POST", "/api/v1/whatsApp/templates", payload=payload)
+    if response.get("ok") is False or response.get("result") is False:
+        raise WatiAPIError(
+            str(
+                response.get("info")
+                or response.get("message")
+                or response.get("result")
+                or "Wati template create failed"
+            ),
+            payload=response,
+        )
+    logger.info("Wati template %s submitted", element_name)
+    return response
+
+
+def delete_message_template(element_name: str, *, language: str | None = None) -> dict[str, Any]:
+    """Cancel/delete a template in Wati by name (and optional language)."""
+    settings = get_settings()
+    waba_id = settings.whatsapp_business_account_id.strip()
+    if not waba_id:
+        raise WatiAPIError("Set WHATSAPP_BUSINESS_ACCOUNT_ID to cancel a template in Wati.")
+    path = f"/api/v1/whatsApp/templates/{quote(waba_id, safe='')}/{quote(element_name, safe='')}"
+    if language:
+        path = f"{path}/{quote(language, safe='')}"
+    response = _api_request("DELETE", path)
+    if response.get("ok") is False or response.get("result") is False:
+        raise WatiAPIError(
+            str(
+                response.get("info")
+                or response.get("message")
+                or response.get("result")
+                or "Wati template delete failed"
+            ),
+            payload=response,
+        )
+    logger.info("Wati template %s cancelled", element_name)
+    return response
+
+
 def extract_message_id(response: dict[str, Any]) -> str | None:
     for key in ("localMessageId", "local_message_id", "messageId", "message_id", "id"):
         value = response.get(key)

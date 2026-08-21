@@ -16,6 +16,7 @@ from bridge_crm.crm.whatsapp.inbound import (
     store_wati_payload,
 )
 from bridge_crm.crm.whatsapp.queries import update_whatsapp_message_status
+from bridge_crm.crm.whatsapp.templates import apply_template_status_event
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +35,13 @@ STATUS_EVENTS = {
     "templateMessageFailed_v2": "failed",
     "sentMessageFAILED": "failed",
     "sentMessageFAILED_v2": "failed",
+}
+
+
+TEMPLATE_STATUS_EVENTS = {
+    "templateReviewed",
+    "template_reviewed",
+    "templateStatusUpdate",
 }
 
 
@@ -69,7 +77,15 @@ def _process_event(payload: dict[str, Any]) -> None:
     kind = event_type(payload)
     logger.info("Wati webhook event=%s", kind)
     try:
-        if kind in STATUS_EVENTS:
+        if kind in TEMPLATE_STATUS_EVENTS or "newTemplateStatus" in payload:
+            updated = apply_template_status_event(payload)
+            if updated:
+                logger.info(
+                    "Wati template %s status=%s",
+                    updated.get("element_name"),
+                    updated.get("status"),
+                )
+        elif kind in STATUS_EVENTS:
             _handle_status(payload, STATUS_EVENTS[kind])
         elif kind in INBOUND_EVENTS or looks_like_inbound(payload):
             stored = store_wati_payload(payload)

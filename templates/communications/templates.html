@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block title %}WhatsApp templates | {{ config.APP_NAME }}{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
+  <div>
+    <p class="text-uppercase small fw-semibold text-body-secondary mb-1">Communications</p>
+    <h1 class="h3 mb-1">WhatsApp templates</h1>
+    <p class="text-body-secondary mb-0">Create templates like in Wati, then track whether Meta has them pending, approved, or cancelled.</p>
+  </div>
+  <div class="d-flex flex-wrap gap-2">
+    <a class="btn btn-outline-secondary" href="{{ url_for('communications.inbox_view') }}"><span class="material-symbols-outlined">arrow_back</span> Inbox</a>
+    <form method="post" action="{{ url_for('communications.sync_templates_view') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="btn btn-outline-primary" type="submit" {% if not whatsapp_api_ready %}disabled{% endif %}>
+        <span class="material-symbols-outlined">sync</span> Sync from Wati
+      </button>
+    </form>
+    <a class="btn btn-primary" href="{{ url_for('communications.create_template_view') }}"><span class="material-symbols-outlined">add</span> New template</a>
+  </div>
+</div>
+
+{% if not whatsapp_api_ready %}
+<div class="alert alert-warning">
+  Wati is not connected. Templates can be tracked here after you set Wati credentials and sync.
+</div>
+{% endif %}
+
+<div class="d-flex flex-wrap gap-2 mb-3">
+  <a class="btn {% if status == 'all' %}btn-primary{% else %}btn-outline-secondary{% endif %}" href="{{ url_for('communications.templates_view') }}">All ({{ template_counts.pending + template_counts.approved + template_counts.cancelled }})</a>
+  <a class="btn {% if status == 'pending' %}btn-primary{% else %}btn-outline-secondary{% endif %}" href="{{ url_for('communications.templates_view', status='pending') }}">Pending ({{ template_counts.pending }})</a>
+  <a class="btn {% if status == 'approved' %}btn-primary{% else %}btn-outline-secondary{% endif %}" href="{{ url_for('communications.templates_view', status='approved') }}">Approved ({{ template_counts.approved }})</a>
+  <a class="btn {% if status == 'cancelled' %}btn-primary{% else %}btn-outline-secondary{% endif %}" href="{{ url_for('communications.templates_view', status='cancelled') }}">Cancelled ({{ template_counts.cancelled }})</a>
+</div>
+
+<div class="crm-card">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead>
+        <tr>
+          <th>Template</th>
+          <th>Category</th>
+          <th>Language</th>
+          <th>Status</th>
+          <th>Updated</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in templates %}
+        <tr>
+          <td>
+            <a class="fw-semibold text-decoration-none" href="{{ url_for('communications.template_detail_view', template_id=item.id) }}">{{ item.element_name }}</a>
+            <div class="small text-body-secondary">{{ (item.body or "")[:120] }}{% if item.body and item.body|length > 120 %}…{% endif %}</div>
+          </td>
+          <td>{{ item.category }}</td>
+          <td>{{ item.language }}</td>
+          <td>
+            {% if item.status == 'approved' %}
+            <span class="badge text-bg-success">Approved</span>
+            {% elif item.status == 'cancelled' %}
+            <span class="badge text-bg-secondary">Cancelled</span>
+            {% else %}
+            <span class="badge text-bg-warning">Pending</span>
+            {% endif %}
+            {% if item.wati_status %}<div class="small text-body-secondary mt-1">{{ item.wati_status }}</div>{% endif %}
+          </td>
+          <td class="small text-body-secondary">{{ item.updated_at.strftime("%Y-%m-%d %H:%M") if item.updated_at else "" }}</td>
+          <td class="text-end">
+            <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('communications.template_detail_view', template_id=item.id) }}">View</a>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="6" class="crm-empty-state">
+            <span class="material-symbols-outlined">description</span>
+            No templates yet. Create one or sync existing templates from Wati.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

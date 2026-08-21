@@ -7,11 +7,16 @@
   <div>
     <p class="text-uppercase small fw-semibold text-body-secondary mb-1">Communications</p>
     <h1 class="h3 mb-1">WhatsApp via Wati</h1>
-    <p class="text-body-secondary mb-0">Reply to individual chats or send a template broadcast to many leads or accounts.</p>
+    <p class="text-body-secondary mb-0">Reply to individual chats, manage templates, or send a broadcast to many leads or accounts.</p>
   </div>
-  <a class="btn btn-success" href="{{ url_for('communications.broadcast_view') }}">
-    <span class="material-symbols-outlined">campaign</span> New broadcast
-  </a>
+  <div class="d-flex flex-wrap gap-2">
+    <a class="btn btn-outline-primary" href="{{ url_for('communications.templates_view') }}">
+      <span class="material-symbols-outlined">description</span> Templates
+    </a>
+    <a class="btn btn-success" href="{{ url_for('communications.broadcast_view') }}">
+      <span class="material-symbols-outlined">campaign</span> New broadcast
+    </a>
+  </div>
 </div>
 
 {% if not whatsapp_api_ready %}
@@ -21,9 +26,39 @@
 </div>
 {% elif not whatsapp_templates_ready %}
 <div class="alert alert-info">
-  Wati credentials are present, so you can send 1:1 session replies. Add <code>WHATSAPP_DEFAULT_TEMPLATE</code> (an approved Wati template) to enable broadcasts and cold outreach.
+  Wati credentials are present, so you can send 1:1 session replies. Create a template here and wait for Meta to approve it, then you can broadcast.
 </div>
 {% endif %}
+
+<div class="row g-3 mb-4">
+  <div class="col-md-4">
+    <a class="crm-card d-block text-decoration-none h-100" href="{{ url_for('communications.templates_view', status='pending') }}">
+      <div class="card-body">
+        <div class="small text-uppercase text-body-secondary fw-semibold">Pending</div>
+        <div class="h3 mb-0 mt-1">{{ template_counts.pending }}</div>
+        <div class="small text-body-secondary">Waiting for Meta approval</div>
+      </div>
+    </a>
+  </div>
+  <div class="col-md-4">
+    <a class="crm-card d-block text-decoration-none h-100" href="{{ url_for('communications.templates_view', status='approved') }}">
+      <div class="card-body">
+        <div class="small text-uppercase text-body-secondary fw-semibold">Approved</div>
+        <div class="h3 mb-0 mt-1">{{ template_counts.approved }}</div>
+        <div class="small text-body-secondary">Ready to send</div>
+      </div>
+    </a>
+  </div>
+  <div class="col-md-4">
+    <a class="crm-card d-block text-decoration-none h-100" href="{{ url_for('communications.templates_view', status='cancelled') }}">
+      <div class="card-body">
+        <div class="small text-uppercase text-body-secondary fw-semibold">Cancelled</div>
+        <div class="h3 mb-0 mt-1">{{ template_counts.cancelled }}</div>
+        <div class="small text-body-secondary">Rejected, deleted, or paused</div>
+      </div>
+    </a>
+  </div>
+</div>
 
 <div class="crm-card">
   <div class="card-body">

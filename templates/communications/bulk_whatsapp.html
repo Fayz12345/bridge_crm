@@ -57,8 +57,21 @@
           {% if whatsapp_templates_ready %}
           <div class="mb-3">
             <label class="form-label" for="template_name">Wati template</label>
+            {% if approved_templates %}
+            <select class="form-select" id="template_name" name="template_name">
+              {% for item in approved_templates %}
+              <option value="{{ item.element_name }}" {% if (template_name or default_template) == item.element_name %}selected{% endif %}>
+                {{ item.element_name }} · {{ item.language }}
+              </option>
+              {% endfor %}
+              {% if default_template and default_template not in approved_templates|map(attribute='element_name')|list %}
+              <option value="{{ default_template }}" {% if template_name == default_template %}selected{% endif %}>{{ default_template }} (default)</option>
+              {% endif %}
+            </select>
+            {% else %}
             <input class="form-control" id="template_name" name="template_name" value="{{ template_name or default_template }}">
-            <div class="form-text">Must match an approved template in Wati. Parameters: name, rep name, message.</div>
+            {% endif %}
+            <div class="form-text">Only approved templates can be sent. Manage them on the <a href="{{ url_for('communications.templates_view') }}">templates</a> page.</div>
           </div>
           {% endif %}
 

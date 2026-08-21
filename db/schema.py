@@ -500,6 +500,36 @@ crm_whatsapp_messages = Table(
     ),
 )
 
+crm_whatsapp_templates = Table(
+    "crm_whatsapp_templates",
+    metadata,
+    Column("id", Integer, primary_key=True),
+    Column("element_name", String(255), nullable=False),
+    Column("category", String(40), nullable=False, server_default="MARKETING"),
+    Column("language", String(20), nullable=False, server_default="en"),
+    Column("header_text", String(255)),
+    Column("body", Text, nullable=False),
+    Column("footer", String(255)),
+    Column("custom_params", JSONB().with_variant(JSON(), "sqlite")),
+    Column("status", String(20), nullable=False, server_default="pending"),
+    Column("wati_status", String(40)),
+    Column("wati_template_id", String(64)),
+    Column("wa_template_id", String(64)),
+    Column("last_synced_at", DateTime(timezone=True)),
+    Column("created_by", ForeignKey("crm_users.id")),
+    Column("created_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
+    Column("updated_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
+    UniqueConstraint("element_name", "language", name="uq_crm_whatsapp_templates_name_language"),
+    CheckConstraint(
+        "category IN ('MARKETING', 'UTILITY', 'AUTHENTICATION')",
+        name="whatsapp_template_category",
+    ),
+    CheckConstraint(
+        "status IN ('pending', 'approved', 'cancelled')",
+        name="whatsapp_template_status",
+    ),
+)
+
 crm_activities = Table(
     "crm_activities",
     metadata,
@@ -592,6 +622,8 @@ Index("ix_crm_products_brand_name", crm_products.c.brand_name)
 Index("ix_crm_custom_fields_object_type", crm_custom_fields.c.object_type)
 Index("ix_crm_purchase_lines_purchase", crm_purchase_lines.c.purchase_id)
 Index("ix_crm_documents_opportunity", crm_documents.c.opportunity_id)
+Index("ix_crm_whatsapp_templates_status", crm_whatsapp_templates.c.status)
+Index("ix_crm_whatsapp_templates_element_name", crm_whatsapp_templates.c.element_name)
 Index("ix_crm_activities_related", crm_activities.c.related_type, crm_activities.c.related_id)
 Index("ix_crm_notifications_user_read", crm_notifications.c.user_id, crm_notifications.c.is_read)
 Index("ix_crm_login_attempts_ip_address", crm_login_attempts.c.ip_address)
