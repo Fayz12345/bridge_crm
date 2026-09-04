@@ -21,6 +21,14 @@ from bridge_crm.crm.imports.csv_parser import (
 )
 from bridge_crm.crm.imports.queries import commit_import, plan_import
 from bridge_crm.crm.imports.staging import claim_upload, load_upload, stage_upload
+from bridge_crm.crm.imports.wati_sync import (
+    MAX_PER_RUN,
+    count_contacts_without_whatsapp,
+    list_unsynced_contacts,
+    sync_contacts,
+    sync_status_counts,
+)
+from bridge_crm.integrations.whatsapp import contacts_supported
 
 imports_bp = Blueprint(
     "imports",
@@ -156,4 +164,66 @@ def commit_view():
         outcome=outcome,
         result=result,
         filename=record["filename"],
+        wati_ready=contacts_supported(),
+    )
+
+
+@imports_bp.route("/wati", methods=["GET"])
+@roles_required("admin", "manager")
+def wati_sync_view():
+    return _render_wati_sync()
+
+
+@imports_bp.route("/wati/sync", methods=["POST"])
+@roles_required("admin", "manager")
+def wati_sync_run_view():
+    if not contacts_supported():
+        flash(
+            "Wati is not configured. Set WHATSAPP_PROVIDER=wati, WATI_API_ENDPOINT, "
+            "and WATI_ACCESS_TOKEN.",
+            "warning",
+        )
+        return redirect(url_for("imports.wati_sync_view"))
+
+    pending = list_unsynced_contacts(limit=MAX_PER_RUN)
+    if not pending:
+        flash("Every contact with a WhatsApp number is already synced to Wati.", "info")
+        return redirect(url_for("imports.wati_sync_view"))
+
+    outcome = sync_contacts([int(record["id"]) for record in pending])
+    current_app.logger.info(
+        "Wati contact sync by user %s: %s synced, %s failed, %s skipped",
+        g.user["id"],
+        outcome.synced,
+        outcome.failed,
+        outcome.skipped,
+    )
+
+    if outcome.synced:
+        flash(f"Pushed {outcome.synced} contact(s) to Wati.", "success")
+    if outcome.failed:
+        flash(f"{outcome.failed} contact(s) failed to sync. They can be retried.", "warning")
+    if not outcome.synced and not outcome.failed:
+        flash("No contacts were sent to Wati.", "warning")
+
+    return _render_wati_sync(last_run=outcome)
+
+
+def _render_wati_sync(last_run=None):
+    counts = sync_status_counts()
+    remaining = len(list_unsynced_contacts(limit=MAX_PER_RUN + 1))
+    return render_template(
+        "imports/wati_sync.html",
+        counts=counts,
+        remaining=remaining,
+        batch_size=MAX_PER_RUN,
+        more_than_one_batch=remaining > MAX_PER_RUN,
+        no_whatsapp_count=count_contacts_without_whatsapp(),
+        failures=[
+            record
+            for record in list_unsynced_contacts(limit=50)
+            if record.get("wati_sync_status") == "failed"
+        ],
+        wati_ready=contacts_supported(),
+        last_run=last_run,
     )

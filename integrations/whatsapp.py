@@ -131,6 +131,34 @@ def send_template_broadcast(
         raise WhatsAppAPIError(str(exc), status_code=getattr(exc, "status_code", None), payload=getattr(exc, "payload", None)) from exc
 
 
+def contacts_supported() -> bool:
+    """Only Wati keeps a contact directory the CRM can push to."""
+    return provider_name() == "wati" and wati.wati_configured()
+
+
+def add_contact(
+    whatsapp_number: str,
+    *,
+    name: str,
+    custom_params: list[dict[str, str]] | None = None,
+) -> dict[str, Any]:
+    try:
+        if provider_name() != "wati":
+            raise WhatsAppAPIError("Contact sync is available when WHATSAPP_PROVIDER=wati.")
+        return wati.add_contact(whatsapp_number, name=name, custom_params=custom_params)
+    except (wati.WatiAPIError, meta_whatsapp.WhatsAppAPIError) as exc:
+        raise WhatsAppAPIError(str(exc), status_code=getattr(exc, "status_code", None), payload=getattr(exc, "payload", None)) from exc
+
+
+def get_contacts(*, page_size: int = 100, page_number: int = 1) -> dict[str, Any]:
+    try:
+        if provider_name() != "wati":
+            raise WhatsAppAPIError("Contact listing is available when WHATSAPP_PROVIDER=wati.")
+        return wati.get_contacts(page_size=page_size, page_number=page_number)
+    except (wati.WatiAPIError, meta_whatsapp.WhatsAppAPIError) as exc:
+        raise WhatsAppAPIError(str(exc), status_code=getattr(exc, "status_code", None), payload=getattr(exc, "payload", None)) from exc
+
+
 def list_message_templates(*, page_size: int = 100, page_number: int = 1) -> dict[str, Any]:
     try:
         if provider_name() != "wati":

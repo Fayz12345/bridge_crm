@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% block title %}Wati Contact Sync | {{ config.APP_NAME }}{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
+  <div>
+    <p class="text-uppercase small fw-semibold text-body-secondary mb-1">Accounts</p>
+    <h1 class="h3 mb-1">Wati contact sync</h1>
+    <p class="text-body-secondary mb-0">Pushes CRM contacts into your Wati address book so they can be messaged and matched to replies.</p>
+  </div>
+  <a class="btn btn-outline-secondary" href="{{ url_for('imports.upload_view') }}"><span class="material-symbols-outlined">upload_file</span> Import Contacts</a>
+</div>
+
+{% if not wati_ready %}
+<div class="alert alert-warning">
+  Wati is not configured, so nothing can be pushed yet. Set <code>WHATSAPP_PROVIDER=wati</code>, <code>WATI_API_ENDPOINT</code>, and <code>WATI_ACCESS_TOKEN</code>, then reload this page.
+</div>
+{% endif %}
+
+<div class="row g-3 mb-3">
+  <div class="col-6 col-lg-3">
+    <div class="crm-card h-100"><div class="card-body">
+      <p class="text-uppercase small fw-semibold text-body-secondary mb-1">Synced to Wati</p>
+      <p class="h3 mb-0 text-success">{{ counts.synced }}</p>
+    </div></div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="crm-card h-100"><div class="card-body">
+      <p class="text-uppercase small fw-semibold text-body-secondary mb-1">Waiting to sync</p>
+      <p class="h3 mb-0">{{ counts.pending }}</p>
+    </div></div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="crm-card h-100"><div class="card-body">
+      <p class="text-uppercase small fw-semibold text-body-secondary mb-1">Failed</p>
+      <p class="h3 mb-0 {% if counts.failed %}text-danger{% endif %}">{{ counts.failed }}</p>
+    </div></div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="crm-card h-100"><div class="card-body">
+      <p class="text-uppercase small fw-semibold text-body-secondary mb-1">No WhatsApp number</p>
+      <p class="h3 mb-0">{{ no_whatsapp_count }}</p>
+      <p class="small text-body-secondary mb-0">Cannot be synced</p>
+    </div></div>
+  </div>
+</div>
+
+{% if last_run %}
+<div class="alert alert-info">
+  Last run: {{ last_run.synced }} synced, {{ last_run.failed }} failed, {{ last_run.skipped }} skipped.
+</div>
+{% endif %}
+
+<div class="crm-card mb-3">
+  <div class="card-body d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+    <div>
+      <h2 class="h5 mb-1">
+        {% if remaining %}{{ remaining if not more_than_one_batch else batch_size ~ '+' }} contact(s) ready to push{% else %}Everything is up to date{% endif %}
+      </h2>
+      <p class="text-body-secondary mb-0">
+        {% if more_than_one_batch %}
+          Contacts are sent in batches of {{ batch_size }} to stay inside Wati's rate limits. Run this again until nothing is left.
+        {% elif remaining %}
+          Includes contacts never synced and any that previously failed.
+        {% else %}
+          Every contact with a WhatsApp number has been pushed to Wati.
+        {% endif %}
+      </p>
+    </div>
+    <form method="post" action="{{ url_for('imports.wati_sync_run_view') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="btn btn-success" type="submit" {% if not remaining or not wati_ready %}disabled{% endif %}>
+        <span class="material-symbols-outlined">sync</span> Push To Wati
+      </button>
+    </form>
+  </div>
+</div>
+
+{% if failures %}
+<div class="crm-card">
+  <div class="card-body">
+    <h2 class="h5 mb-1 text-danger">Recent failures</h2>
+    <p class="text-body-secondary mb-0">These are retried automatically the next time you push.</p>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-sm align-middle mb-0">
+      <thead><tr><th>Contact</th><th>Company</th><th>WhatsApp</th><th>Error</th></tr></thead>
+      <tbody>
+        {% for record in failures %}
+        <tr>
+          <td>
+            <a class="text-decoration-none" href="{{ url_for('accounts.edit_contact_view', account_id=record.account_id, contact_id=record.id) }}">
+              {{ record.first_name }} {{ record.last_name }}
+            </a>
+          </td>
+          <td>{{ record.company_name }}</td>
+          <td class="small">{{ record.whatsapp_number }}</td>
+          <td class="text-danger small">{{ record.wati_sync_error }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

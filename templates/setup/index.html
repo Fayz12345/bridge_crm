@@ -41,5 +41,15 @@
       </div>
     </div>
   </div>
+  <div class="col-lg-6">
+    <div class="crm-card h-100">
+      <div class="card-body">
+        <span class="material-symbols-outlined d-block mb-2" style="font-size:36px;color:var(--crm-teal)">sync</span>
+        <h2 class="h5">Wati Contact Sync</h2>
+        <p class="text-body-secondary">Push CRM contacts into your Wati address book, and retry any that failed.</p>
+        <a class="btn btn-primary" href="{{ url_for('imports.wati_sync_view') }}"><span class="material-symbols-outlined">arrow_forward</span> Open Wati Sync</a>
+      </div>
+    </div>
+  </div>
 </div>
 {% endblock %}
