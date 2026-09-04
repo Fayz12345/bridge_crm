@@ -146,6 +146,9 @@ class ParsedRow:
     tags: list[str] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
+    # Canonical field names the file actually carries a column for. An update
+    # must only touch these; every other field is left as it is in the CRM.
+    provided: frozenset = frozenset()
 
     @property
     def is_valid(self) -> bool:
@@ -179,6 +182,7 @@ class ParseResult:
     rows: list[ParsedRow] = field(default_factory=list)
     recognized_headers: list[str] = field(default_factory=list)
     unknown_headers: list[str] = field(default_factory=list)
+    duplicate_headers: list[str] = field(default_factory=list)
     missing_headers: list[str] = field(default_factory=list)
     file_errors: list[str] = field(default_factory=list)
     truncated: bool = False
@@ -209,6 +213,10 @@ def decode_csv_bytes(raw: bytes) -> tuple[str, str | None]:
     """Decode uploaded bytes, tolerating the BOM Excel writes. Returns (text, error)."""
     if len(raw) > MAX_FILE_BYTES:
         return "", f"File is larger than {MAX_FILE_BYTES // (1024 * 1024)} MB."
+    # latin-1 decodes any byte sequence, so a binary file (an .xlsx is a zip)
+    # would otherwise slip through as mojibake and blow up in the csv reader.
+    if b"\x00" in raw:
+        return "", "That looks like a binary file, not a CSV. Save it as CSV and try again."
     for encoding in ("utf-8-sig", "utf-8", "cp1252", "latin-1"):
         try:
             return raw.decode(encoding), None
@@ -229,6 +237,9 @@ def parse_contacts_csv(text: str) -> ParseResult:
     except StopIteration:
         result.file_errors.append("The file is empty.")
         return result
+    except csv.Error as exc:
+        result.file_errors.append(f"That file could not be read as CSV ({exc}).")
+        return result
 
     header_map: dict[int, str] = {}
     for index, raw_header in enumerate(raw_headers):
@@ -236,32 +247,47 @@ def parse_contacts_csv(text: str) -> ParseResult:
         if not normalized:
             continue
         canonical = _HEADER_ALIASES.get(normalized)
-        if canonical:
-            # First column wins if a header is repeated.
-            if canonical not in header_map.values():
-                header_map[index] = canonical
-        else:
+        if not canonical:
             result.unknown_headers.append(raw_header.strip())
+        elif canonical in header_map.values():
+            # Two columns mean the same field (e.g. "phone" and "mobile").
+            # The first wins; say so rather than dropping the data silently.
+            result.duplicate_headers.append(raw_header.strip())
+        else:
+            header_map[index] = canonical
 
     result.recognized_headers = sorted(set(header_map.values()))
     result.missing_headers = [name for name in REQUIRED_HEADERS if name not in header_map.values()]
     if result.missing_headers:
         return result
 
+    provided = frozenset(header_map.values())
     seen_keys: dict[tuple[str, str], int] = {}
-    for offset, raw_row in enumerate(reader):
+    offset = 0
+    while True:
+        try:
+            raw_row = next(reader)
+        except StopIteration:
+            break
+        except csv.Error as exc:
+            result.file_errors.append(
+                f"That file could not be read as CSV at row {offset + 2} ({exc})."
+            )
+            return result
+
+        offset += 1
         if len(result.rows) >= MAX_ROWS:
             result.truncated = True
             break
         if not any((cell or "").strip() for cell in raw_row):
             continue
 
-        row_number = offset + 2  # header is row 1
+        row_number = offset + 1  # header is row 1
         values = {
             canonical: (raw_row[index] if index < len(raw_row) else "")
             for index, canonical in header_map.items()
         }
-        parsed = _build_row(row_number, values)
+        parsed = _build_row(row_number, values, provided)
 
         if parsed.is_valid:
             key = (parsed.company_key, parsed.contact_key)
@@ -275,13 +301,13 @@ def parse_contacts_csv(text: str) -> ParseResult:
 
         result.rows.append(parsed)
 
-    if not result.rows:
+    if not result.rows and not result.file_errors:
         result.file_errors.append("The file has a header row but no data rows.")
     return result
 
 
-def _build_row(row_number: int, values: dict[str, str]) -> ParsedRow:
-    row = ParsedRow(row_number=row_number)
+def _build_row(row_number: int, values: dict[str, str], provided: frozenset = frozenset()) -> ParsedRow:
+    row = ParsedRow(row_number=row_number, provided=provided or frozenset(values))
 
     for name in ACCOUNT_FIELDS:
         row.account[name] = _clean_field(name, values.get(name), row)

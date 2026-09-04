@@ -49,6 +49,12 @@
 </div>
 {% endif %}
 
+{% if result.duplicate_headers %}
+<div class="alert alert-warning">
+  These columns map to a field another column already fills, so only the first one is used: {% for header in result.duplicate_headers %}<code>{{ header }}</code>{% if not loop.last %}, {% endif %}{% endfor %}
+</div>
+{% endif %}
+
 {% if result.error_rows %}
 <div class="crm-card mb-3">
   <div class="card-body d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
@@ -84,9 +90,14 @@
 <div class="crm-card mb-3">
   <div class="card-body">
     <h2 class="h5 mb-1">{{ plan_total }} row(s) ready to import</h2>
-    <p class="text-body-secondary mb-0">
+    <p class="text-body-secondary mb-1">
       {% if plan_total > preview_row_limit %}Showing the first {{ preview_row_limit }}.{% endif %}
-      Rows marked <span class="badge text-bg-info">Update</span> match a contact that already exists and will have their details overwritten from the file.
+      Rows marked <span class="badge text-bg-info">Update</span> match a contact that already exists.
+    </p>
+    <p class="text-body-secondary small mb-0">
+      An update only writes the columns your file contains, and a blank cell is left alone rather than
+      erasing what the CRM already holds. On a company that already exists, empty account fields are
+      filled in from the file and tags are added, but existing values are never overwritten.
     </p>
   </div>
   <div class="table-responsive">
@@ -109,6 +120,8 @@
             {{ plan.account_name }}
             {% if plan.creates_account %}
             <span class="badge text-bg-success ms-1">New account</span>
+            {% elif plan.backfill_fields %}
+            <div class="small text-body-secondary">Fills in: {{ plan.backfill_fields | join(", ") }}</div>
             {% endif %}
           </td>
           <td>
@@ -136,14 +149,25 @@
   </div>
 </div>
 
-<form method="post" action="{{ url_for('imports.commit_view') }}">
+<form method="post" action="{{ url_for('imports.commit_view') }}" id="import-commit-form">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <input type="hidden" name="token" value="{{ token }}">
   <div class="d-flex flex-wrap gap-2">
-    <button class="btn btn-primary" type="submit" {% if not plan_total %}disabled{% endif %}>
+    <button class="btn btn-primary" type="submit" id="import-commit-button" {% if not plan_total %}disabled{% endif %}>
       <span class="material-symbols-outlined">check</span> Import {{ plan_total }} Row(s)
     </button>
     <a class="btn btn-outline-secondary" href="{{ url_for('imports.upload_view') }}">Cancel</a>
   </div>
+  <p class="text-body-secondary small mt-2 mb-0">A large import can take a minute. Leave this page open until it finishes.</p>
 </form>
+
+<script>
+  // A second submit would import the same file twice; the server also refuses
+  // a repeat, but disabling here makes the wait obvious.
+  document.getElementById("import-commit-form").addEventListener("submit", function () {
+    var button = document.getElementById("import-commit-button");
+    button.disabled = true;
+    button.textContent = "Importing…";
+  });
+</script>
 {% endblock %}

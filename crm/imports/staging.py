@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import secrets
 import time
 from pathlib import Path
@@ -35,21 +36,23 @@ def stage_upload(*, content: str, filename: str, user_id: int) -> str:
     prune_expired()
     token = secrets.token_hex(16)
     path = _staging_dir() / f"{token}.json"
-    path.write_text(
-        json.dumps(
+    # The file holds contact PII, so create it unreadable to other users.
+    handle = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(handle, "w", encoding="utf-8") as stream:
+        json.dump(
             {
                 "user_id": int(user_id),
                 "filename": filename,
                 "created_at": time.time(),
                 "content": content,
-            }
-        ),
-        encoding="utf-8",
-    )
+            },
+            stream,
+        )
     return token
 
 
 def load_upload(token: str, *, user_id: int) -> dict | None:
+    prune_expired()
     path = _staging_path(token)
     if path is None or not path.exists():
         return None
@@ -67,6 +70,24 @@ def load_upload(token: str, *, user_id: int) -> dict | None:
     return record
 
 
+def claim_upload(token: str, *, user_id: int) -> bool:
+    """Take exclusive ownership of a staged upload.
+
+    Renaming is atomic on a POSIX filesystem, so of two concurrent commits of
+    the same token exactly one succeeds and the other is turned away.
+    """
+    if load_upload(token, user_id=user_id) is None:
+        return False
+    path = _staging_path(token)
+    if path is None:
+        return False
+    try:
+        path.rename(path.with_suffix(".claimed"))
+    except OSError:
+        return False
+    return True
+
+
 def discard_upload(token: str) -> None:
     path = _staging_path(token)
     if path is not None:
@@ -74,10 +95,16 @@ def discard_upload(token: str) -> None:
 
 
 def prune_expired() -> None:
+    """Delete staged and already-claimed uploads past their TTL.
+
+    Runs on both stage and load so files do not linger on a quiet instance.
+    """
     cutoff = time.time() - STAGING_TTL_SECONDS
     try:
-        for path in _staging_dir().glob("*.json"):
-            if path.stat().st_mtime < cutoff:
-                path.unlink(missing_ok=True)
+        directory = _staging_dir()
+        for pattern in ("*.json", "*.claimed"):
+            for path in directory.glob(pattern):
+                if path.stat().st_mtime < cutoff:
+                    path.unlink(missing_ok=True)
     except OSError:
         logger.warning("Could not prune import staging directory", exc_info=True)

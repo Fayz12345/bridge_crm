@@ -20,7 +20,7 @@ from bridge_crm.crm.imports.csv_parser import (
     parse_contacts_csv,
 )
 from bridge_crm.crm.imports.queries import commit_import, plan_import
-from bridge_crm.crm.imports.staging import discard_upload, load_upload, stage_upload
+from bridge_crm.crm.imports.staging import claim_upload, load_upload, stage_upload
 
 imports_bp = Blueprint(
     "imports",
@@ -125,8 +125,14 @@ def commit_view():
         flash("There is nothing valid to import in that file.", "danger")
         return redirect(url_for("imports.upload_view"))
 
+    # Claim the upload before the (potentially slow) write, so a double-submit
+    # cannot start a second import of the same file against a stale view of
+    # the database and duplicate every account in it.
+    if not claim_upload(token, user_id=g.user["id"]):
+        flash("That import is already running or has been completed.", "warning")
+        return redirect(url_for("accounts.list_view"))
+
     outcome = commit_import(result.rows, g.user["id"])
-    discard_upload(token)
     current_app.logger.info(
         "Contact import by user %s from %s: %s account(s), %s new / %s updated contact(s), %s failed",
         g.user["id"],

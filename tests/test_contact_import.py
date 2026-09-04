@@ -1,6 +1,7 @@
 import pytest
 
 from bridge_crm.crm.imports import queries as import_queries
+from bridge_crm.crm.imports import staging
 from bridge_crm.crm.imports.csv_parser import (
     decode_csv_bytes,
     error_report_csv,
@@ -167,6 +168,36 @@ def test_decode_rejects_oversized_files():
     assert error and "larger than" in error
 
 
+def test_decode_rejects_a_binary_file():
+    """latin-1 would decode an .xlsx into mojibake that blows up the csv reader."""
+    _, error = decode_csv_bytes(b"PK\x03\x04\x00\x00binary\x00payload")
+    assert error and "binary file" in error
+
+
+def test_unreadable_csv_reports_a_file_error_rather_than_raising():
+    result = parse_contacts_csv('company_name,first_name,last_name,email\n"unclosed,Ann,Lee,a@b.co')
+    # Either it parses leniently or it reports a file error; it must not raise.
+    assert result.file_errors or result.rows
+
+
+def test_duplicate_columns_for_one_field_are_reported():
+    result = parse_contacts_csv(
+        "company_name,first_name,last_name,email,phone,mobile\n"
+        "Acme,Ann,Lee,ann@acme.test,501234567,509999999"
+    )
+    assert result.duplicate_headers == ["mobile"]
+    # The first column wins.
+    assert result.rows[0].contact["phone"] == "501234567"
+
+
+def test_provided_records_which_columns_the_file_has():
+    result = parse_contacts_csv("company_name,first_name,last_name,email\nAcme,Ann,Lee,a@b.co")
+    provided = result.rows[0].provided
+    assert "email" in provided
+    assert "job_title" not in provided
+    assert "is_primary" not in provided
+
+
 def test_error_report_lists_rejected_rows_only():
     result = parse_contacts_csv(
         _csv(
@@ -187,12 +218,25 @@ def stub_lookups(monkeypatch):
     id; `contacts` maps (account_id, email) to a contact id.
     """
 
-    def _install(accounts: dict, contacts: dict | None = None):
+    def _install(accounts: dict, contacts: dict | None = None, records: dict | None = None):
         index: dict[int, dict[str, int]] = {}
         for (account_id, email), contact_id in (contacts or {}).items():
             index.setdefault(account_id, {})[f"email:{email}"] = contact_id
-        monkeypatch.setattr(import_queries, "_lookup_accounts", lambda rows: dict(accounts))
-        monkeypatch.setattr(import_queries, "_lookup_contacts", lambda account_ids: index)
+        account_records = {
+            account_id: {"id": account_id, **(records or {}).get(account_id, {})}
+            for account_id in set(accounts.values())
+            if account_id is not None
+        }
+        contact_records = {
+            contact_id: {"id": contact_id} for contact_id in (contacts or {}).values()
+        }
+        monkeypatch.setattr(
+            import_queries, "_lookup_accounts", lambda rows: (dict(accounts), account_records)
+        )
+        monkeypatch.setattr(
+            import_queries, "_lookup_contacts", lambda ids: (index, contact_records)
+        )
+        return contact_records
 
     return _install
 
@@ -279,6 +323,7 @@ def stub_writes(monkeypatch):
     monkeypatch.setattr(import_queries, "update_contact_for_account", fake_update_contact)
     monkeypatch.setattr(import_queries, "replace_account_tags", lambda account_id, tags: None)
     monkeypatch.setattr(import_queries, "log_activity", lambda *args, **kwargs: None)
+    monkeypatch.setattr(import_queries, "_backfill_account", lambda *args: False)
     return written
 
 
@@ -325,6 +370,97 @@ def test_commit_records_a_failed_row_and_keeps_going(stub_lookups, stub_writes):
     assert "insert exploded" in outcome.failures[0]["error"]
 
 
+def test_update_never_erases_fields_the_file_does_not_carry(stub_lookups, stub_writes):
+    """A file with only email columns must not blank out phone/job title."""
+    contact_records = stub_lookups({"acme": 7}, {(7, "ann@acme.test"): 42})
+    contact_records[42].update(
+        {
+            "first_name": "Ann",
+            "last_name": "Lee",
+            "email": "ann@acme.test",
+            "phone": "501234567",
+            "phone_prefix": "+971",
+            "whatsapp_number": "971501234567",
+            "job_title": "Buyer",
+            "is_primary": True,
+        }
+    )
+    result = parse_contacts_csv(
+        "company_name,first_name,last_name,email\nAcme,Ann,Lee,ann@acme.test"
+    )
+    import_queries.commit_import(result.rows, user_id=1)
+
+    payload = stub_writes["updated"][0][2]
+    assert payload["phone"] == "501234567"
+    assert payload["phone_prefix"] == "+971"
+    assert payload["whatsapp_number"] == "971501234567"
+    assert payload["job_title"] == "Buyer"
+    # is_primary has no "absent" value, so the stored one is kept.
+    assert payload["is_primary"] is True
+
+
+def test_update_applies_the_values_the_file_does_carry(stub_lookups, stub_writes):
+    contact_records = stub_lookups({"acme": 7}, {(7, "ann@acme.test"): 42})
+    contact_records[42].update({"job_title": "Buyer", "phone": "501234567", "is_primary": False})
+    result = parse_contacts_csv(
+        "company_name,first_name,last_name,email,job_title,is_primary\n"
+        "Acme,Ann,Lee,ann@acme.test,Head of Procurement,yes"
+    )
+    import_queries.commit_import(result.rows, user_id=1)
+
+    payload = stub_writes["updated"][0][2]
+    assert payload["job_title"] == "Head of Procurement"
+    assert payload["is_primary"] is True
+    assert payload["phone"] == "501234567"
+
+
+def test_update_treats_a_blank_cell_as_no_data_not_a_deletion(stub_lookups, stub_writes):
+    contact_records = stub_lookups({"acme": 7}, {(7, "ann@acme.test"): 42})
+    contact_records[42].update({"job_title": "Buyer"})
+    result = parse_contacts_csv(
+        "company_name,first_name,last_name,email,job_title\nAcme,Ann,Lee,ann@acme.test,"
+    )
+    import_queries.commit_import(result.rows, user_id=1)
+    assert stub_writes["updated"][0][2]["job_title"] == "Buyer"
+
+
+def test_contact_is_matched_by_number_despite_formatting(monkeypatch):
+    """The CRM stores whatever was typed; the CSV parser stores bare digits."""
+    index = {7: {import_queries._number_key("+971 50 123 4567"): 42}}
+    monkeypatch.setattr(
+        import_queries, "_lookup_accounts", lambda rows: ({"acme": 7}, {7: {"id": 7}})
+    )
+    monkeypatch.setattr(import_queries, "_lookup_contacts", lambda ids: (index, {42: {"id": 42}}))
+    result = parse_contacts_csv(_csv("Acme,Ann,Lee,,,,971501234567,yes"))
+    plan = import_queries.plan_import(result.rows)[0]
+    assert plan.contact_action == "update"
+    assert plan.contact_id == 42
+
+
+def test_number_key_ignores_punctuation_and_spacing():
+    assert import_queries._number_key("+971 50 123 4567") == import_queries._number_key(
+        "971501234567"
+    )
+    assert import_queries._number_key("(971) 50-123-4567") == import_queries._number_key(
+        "971501234567"
+    )
+    assert import_queries._number_key("") is None
+
+
+def test_backfill_lists_only_the_blank_account_fields(stub_lookups):
+    stub_lookups(
+        {"acme": 7},
+        records={7: {"industry": "Retail", "city": None, "erp_client_id": None}},
+    )
+    result = parse_contacts_csv(
+        "company_name,erp_client_id,first_name,last_name,email,industry,city\n"
+        "Acme,ERP-1,Ann,Lee,ann@acme.test,Wholesale,Dubai"
+    )
+    plan = import_queries.plan_import(result.rows)[0]
+    # industry already has a value, so it is left alone.
+    assert plan.backfill_fields == ["city", "erp_client_id"]
+
+
 def test_commit_passes_account_columns_through_to_create(stub_lookups, stub_writes):
     stub_lookups({})
     result = parse_contacts_csv(
@@ -338,3 +474,50 @@ def test_commit_passes_account_columns_through_to_create(stub_lookups, stub_writ
     assert payload["industry"] == "Retail"
     assert payload["city"] == "Dubai"
     assert payload["owner_id"] == 9 and payload["created_by"] == 9
+
+
+@pytest.fixture
+def staging_dir(tmp_path, monkeypatch):
+    monkeypatch.setattr(staging, "_staging_dir", lambda: tmp_path)
+    return tmp_path
+
+
+def test_staged_upload_round_trips_for_its_owner(staging_dir):
+    token = staging.stage_upload(content="company_name\nAcme", filename="f.csv", user_id=3)
+    record = staging.load_upload(token, user_id=3)
+    assert record["content"] == "company_name\nAcme"
+    assert record["filename"] == "f.csv"
+
+
+def test_staged_upload_is_not_readable_by_another_user(staging_dir):
+    token = staging.stage_upload(content="x", filename="f.csv", user_id=3)
+    assert staging.load_upload(token, user_id=4) is None
+
+
+def test_staged_file_is_not_world_readable(staging_dir):
+    token = staging.stage_upload(content="x", filename="f.csv", user_id=3)
+    mode = (staging_dir / f"{token}.json").stat().st_mode & 0o777
+    assert mode == 0o600
+
+
+def test_only_the_first_claim_of_an_upload_succeeds(staging_dir):
+    """A double-submit must not run the same import twice."""
+    token = staging.stage_upload(content="x", filename="f.csv", user_id=3)
+    assert staging.claim_upload(token, user_id=3) is True
+    assert staging.claim_upload(token, user_id=3) is False
+    assert staging.load_upload(token, user_id=3) is None
+
+
+def test_claiming_an_unknown_token_fails(staging_dir):
+    assert staging.claim_upload("deadbeef" * 4, user_id=3) is False
+
+
+def test_a_malformed_token_cannot_escape_the_staging_directory(staging_dir):
+    assert staging.load_upload("../../etc/passwd", user_id=3) is None
+    assert staging.claim_upload("../../etc/passwd", user_id=3) is False
+
+
+def test_expired_uploads_are_pruned(staging_dir, monkeypatch):
+    token = staging.stage_upload(content="x", filename="f.csv", user_id=3)
+    monkeypatch.setattr(staging.time, "time", lambda: 10**10)
+    assert staging.load_upload(token, user_id=3) is None
