@@ -1,0 +1,5 @@
+company_name,erp_client_id,first_name,last_name,email,phone_prefix,phone,whatsapp_number,job_title,is_primary,industry,city,country,notes
+Al Noor Trading LLC,ERP-1042,Ahmed,Hassan,ahmed.hassan@alnoor.example,+971,501234567,971501234567,Procurement Manager,yes,Retail,Dubai,United Arab Emirates,Met at GITEX 2025
+Al Noor Trading LLC,ERP-1042,Sara,Khalil,sara.khalil@alnoor.example,+971,529876543,971529876543,Accounts Payable,no,Retail,Dubai,United Arab Emirates,
+Gulf Star Electronics,,Ravi,Menon,ravi@gulfstar.example,+971,554455667,971554455667,Owner,yes,Electronics,Sharjah,United Arab Emirates,Prefers WhatsApp over email
+Horizon Telecom FZE,ERP-2210,Fatima,Al Mansoori,,+971,509988776,971509988776,Operations Lead,yes,Telecom,Abu Dhabi,United Arab Emirates,No email on file - WhatsApp only

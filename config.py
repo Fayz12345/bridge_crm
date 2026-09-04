@@ -56,6 +56,7 @@ class Settings:
     login_rate_limit_count: int
     login_rate_limit_window_seconds: int
     document_storage_dir: str
+    import_staging_dir: str
     quote_valid_days: int
     sales_order_payment_terms_days: int
     sales_order_payment_terms_text: str
@@ -95,6 +96,7 @@ class Settings:
             "LOGIN_RATE_LIMIT_COUNT": self.login_rate_limit_count,
             "LOGIN_RATE_LIMIT_WINDOW_SECONDS": self.login_rate_limit_window_seconds,
             "DOCUMENT_STORAGE_DIR": self.document_storage_dir,
+            "IMPORT_STAGING_DIR": self.import_staging_dir,
             "QUOTE_VALID_DAYS": self.quote_valid_days,
             "SALES_ORDER_PAYMENT_TERMS_DAYS": self.sales_order_payment_terms_days,
             "SALES_ORDER_PAYMENT_TERMS_TEXT": self.sales_order_payment_terms_text,
@@ -161,6 +163,9 @@ def get_settings() -> Settings:
         ),
         document_storage_dir=os.getenv(
             "DOCUMENT_STORAGE_DIR", str(BASE_DIR / "data" / "documents")
+        ),
+        import_staging_dir=os.getenv(
+            "IMPORT_STAGING_DIR", str(BASE_DIR / "data" / "imports")
         ),
         quote_valid_days=int(os.getenv("QUOTE_VALID_DAYS", "30")),
         sales_order_payment_terms_days=int(

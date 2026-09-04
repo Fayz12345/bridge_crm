@@ -26,6 +26,7 @@ from bridge_crm.crm.auth.routes import auth_bp
 from bridge_crm.crm.communications.routes import communications_bp
 from bridge_crm.crm.custom_fields.routes import custom_fields_bp
 from bridge_crm.crm.dashboard.routes import dashboard_bp
+from bridge_crm.crm.imports.routes import imports_bp
 from bridge_crm.crm.leads.routes import leads_bp
 from bridge_crm.crm.notifications.queries import count_unread_notifications
 from bridge_crm.crm.notifications.routes import notifications_bp
@@ -64,6 +65,7 @@ def create_app(settings: Settings | None = None) -> Flask:
     app.register_blueprint(auth_bp)
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(accounts_bp)
+    app.register_blueprint(imports_bp)
     app.register_blueprint(communications_bp)
     app.register_blueprint(leads_bp)
     app.register_blueprint(opportunities_bp)

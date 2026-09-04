@@ -9,7 +9,12 @@
     <h1 class="h3 mb-1">Companies and customers</h1>
     <p class="text-body-secondary mb-0">This is the first operational CRM module built from the implementation plan.</p>
   </div>
-  <a class="btn btn-primary" href="{{ url_for('accounts.create_view') }}"><span class="material-symbols-outlined">add</span> New Account</a>
+  <div class="d-flex flex-wrap gap-2">
+    {% if g.user and g.user.role in ('admin', 'manager') %}
+    <a class="btn btn-outline-primary" href="{{ url_for('imports.upload_view') }}"><span class="material-symbols-outlined">upload_file</span> Import Contacts</a>
+    {% endif %}
+    <a class="btn btn-primary" href="{{ url_for('accounts.create_view') }}"><span class="material-symbols-outlined">add</span> New Account</a>
+  </div>
 </div>
 
 <div class="crm-card mb-3">

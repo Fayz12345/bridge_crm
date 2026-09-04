@@ -31,5 +31,15 @@
       </div>
     </div>
   </div>
+  <div class="col-lg-6">
+    <div class="crm-card h-100">
+      <div class="card-body">
+        <span class="material-symbols-outlined d-block mb-2" style="font-size:36px;color:var(--crm-teal)">upload_file</span>
+        <h2 class="h5">Import Contacts</h2>
+        <p class="text-body-secondary">Bulk-load companies and their contacts from a CSV file, with a preview of every change before anything is saved.</p>
+        <a class="btn btn-primary" href="{{ url_for('imports.upload_view') }}"><span class="material-symbols-outlined">arrow_forward</span> Import Contacts</a>
+      </div>
+    </div>
+  </div>
 </div>
 {% endblock %}

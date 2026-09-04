@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}Import Contacts | {{ config.APP_NAME }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center gap-3 mb-4">
+  <div>
+    <p class="text-uppercase small fw-semibold text-body-secondary mb-1">Accounts</p>
+    <h1 class="h3 mb-1">Import contacts from CSV</h1>
+    <p class="text-body-secondary mb-0">Upload a file, review what will change, then confirm. Nothing is saved until you confirm.</p>
+  </div>
+  <a class="btn btn-outline-secondary" href="{{ url_for('accounts.list_view') }}"><span class="material-symbols-outlined">arrow_back</span> Back To Accounts</a>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="crm-card h-100">
+      <div class="card-body">
+        <h2 class="h5 mb-3">Upload your file</h2>
+        <form method="post" action="{{ url_for('imports.preview_view') }}" enctype="multipart/form-data" class="row g-3">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="col-12">
+            <label class="form-label" for="csv_file">CSV file</label>
+            <input class="form-control" id="csv_file" name="csv_file" type="file" accept=".csv,text/csv" required>
+            <div class="form-text">Up to {{ "{:,}".format(max_rows) }} rows per file. Larger lists can be split and uploaded in batches.</div>
+          </div>
+          <div class="col-12 d-flex gap-2">
+            <button class="btn btn-primary" type="submit"><span class="material-symbols-outlined">upload_file</span> Preview Import</button>
+            <a class="btn btn-outline-secondary" href="{{ url_for('static', filename='samples/contacts_import_sample.csv') }}" download>
+              <span class="material-symbols-outlined">download</span> Download Sample CSV
+            </a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-5">
+    <div class="crm-card h-100">
+      <div class="card-body">
+        <h2 class="h5 mb-3">How rows are matched</h2>
+        <ul class="text-body-secondary mb-3 ps-3">
+          <li>One row is one person. Rows sharing a company are grouped into a single account.</li>
+          <li>An account is matched on <code>erp_client_id</code> first, then on company name.</li>
+          <li>Within an account, a contact is matched on email, then on WhatsApp or phone number. A match is updated; anything else is created.</li>
+        </ul>
+        <h2 class="h6 mb-2">Columns</h2>
+        <p class="mb-1"><span class="badge text-bg-danger">Required</span> <code>company_name</code>, <code>first_name</code>, <code>last_name</code>, and at least one of <code>email</code> / <code>phone</code> / <code>whatsapp_number</code>.</p>
+        <p class="mb-0 text-body-secondary small">
+          Optional: <code>erp_client_id</code>, <code>phone_prefix</code>, <code>job_title</code>, <code>is_primary</code>,
+          <code>industry</code>, <code>website</code>, <code>address_line_1</code>, <code>address_line_2</code>, <code>city</code>,
+          <code>state_province</code>, <code>postal_code</code>, <code>country</code>, <code>notes</code>, <code>tags</code>.
+          Column order does not matter and common header spellings are accepted.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

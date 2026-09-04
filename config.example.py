@@ -43,6 +43,9 @@ LEAD_FORM_ALLOWED_PARENTS = "https://bridge-wireless.com,https://www.bridge-wire
 LOGIN_RATE_LIMIT_COUNT = 5
 LOGIN_RATE_LIMIT_WINDOW_SECONDS = 900
 
+# Contact CSV import staging (uploads held between preview and confirm)
+IMPORT_STAGING_DIR = ""
+
 # Quote / sales order documents
 DOCUMENT_STORAGE_DIR = ""
 QUOTE_VALID_DAYS = 30
