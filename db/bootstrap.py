@@ -58,6 +58,25 @@ def _ensure_incremental_schema(connection) -> None:
                 )
             )
 
+    contact_columns = (
+        {column["name"] for column in inspector.get_columns("crm_contacts")}
+        if "crm_contacts" in tables
+        else set()
+    )
+    if "crm_contacts" in tables:
+        timestamp_type = (
+            "TIMESTAMP WITH TIME ZONE" if connection.dialect.name == "postgresql" else "DATETIME"
+        )
+        for column_name, column_type in (
+            ("wati_sync_status", "VARCHAR(20)"),
+            ("wati_synced_at", timestamp_type),
+            ("wati_sync_error", "TEXT"),
+        ):
+            if column_name not in contact_columns:
+                connection.execute(
+                    text(f"ALTER TABLE crm_contacts ADD COLUMN {column_name} {column_type}")
+                )
+
     purchase_columns = (
         {column["name"] for column in inspector.get_columns("crm_purchases")}
         if "crm_purchases" in tables

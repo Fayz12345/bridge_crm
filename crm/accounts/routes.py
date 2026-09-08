@@ -34,6 +34,7 @@ from bridge_crm.crm.emails.queries import (
     mark_email_failed,
     mark_email_sent,
 )
+from bridge_crm.crm.imports.wati_sync import sync_one_contact
 from bridge_crm.crm.segments.queries import (
     get_account_product_interest_ids,
     get_account_tag_names,
@@ -158,6 +159,17 @@ def _format_phone_number(phone_prefix: str | None, phone: str | None) -> str | N
     if phone_prefix and str(phone_prefix).strip().startswith("+"):
         return f"+{normalized}"
     return normalized
+
+
+def _sync_contact_to_wati(contact_id: int) -> None:
+    """Keep Wati in step with a manual save. Never blocks the save itself — a
+    failure is recorded on the contact and retried from the Wati sync page.
+    Stays silent when Wati is not configured or the contact has no number."""
+    if sync_one_contact(int(contact_id)).failed:
+        flash(
+            "This contact was saved but could not be pushed to Wati. Retry from Wati Sync.",
+            "warning",
+        )
 
 
 def _account_display_name(account: dict) -> str:
@@ -381,6 +393,7 @@ def create_contact_view(account_id: int):
         else:
             contact_id = create_contact_for_account(_build_contact_payload(request.form, account_id))
             flash("Contact added to account.", "success")
+            _sync_contact_to_wati(contact_id)
             return redirect(url_for("accounts.detail_view", account_id=account_id, contact_id=contact_id))
 
     return render_template(
@@ -415,6 +428,7 @@ def edit_contact_view(account_id: int, contact_id: int):
         else:
             update_contact_for_account(account_id, contact_id, _build_contact_payload(request.form, account_id))
             flash("Contact updated.", "success")
+            _sync_contact_to_wati(contact_id)
             return redirect(url_for("accounts.detail_view", account_id=account_id, contact_id=contact_id))
 
     return render_template(

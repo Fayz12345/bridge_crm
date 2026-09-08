@@ -83,6 +83,9 @@ crm_contacts = Table(
     Column("job_title", String(120)),
     Column("is_primary", Boolean, nullable=False, server_default="false"),
     Column("whatsapp_number", String(30)),
+    Column("wati_sync_status", String(20)),
+    Column("wati_synced_at", DateTime(timezone=True)),
+    Column("wati_sync_error", Text),
     Column("created_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
     Column("updated_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
 )

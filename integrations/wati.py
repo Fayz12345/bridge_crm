@@ -298,6 +298,84 @@ def send_template_broadcast(
     return response
 
 
+def add_contact(
+    whatsapp_number: str,
+    *,
+    name: str,
+    custom_params: list[dict[str, str]] | None = None,
+) -> dict[str, Any]:
+    """Create or update a contact in the Wati address book.
+
+    Wati's addContact upserts on the WhatsApp number, so this is safe to call
+    for a contact that may already exist there.
+    """
+    recipient = normalize_whatsapp_number(whatsapp_number)
+    if not recipient:
+        raise WatiAPIError("Invalid WhatsApp phone number.")
+
+    payload: dict[str, Any] = {
+        "name": (name or "").strip()[:256] or recipient,
+        "customParams": custom_params or [],
+    }
+    path = f"/api/v1/addContact/{quote(recipient, safe='')}"
+    response = _api_request("POST", path, payload=payload)
+    if response.get("result") is False or response.get("ok") is False:
+        raise WatiAPIError(
+            str(response.get("info") or response.get("message") or "Wati addContact failed"),
+            payload=response,
+        )
+    return response
+
+
+def update_contact_attributes(
+    whatsapp_number: str,
+    custom_params: list[dict[str, str]],
+) -> dict[str, Any]:
+    """Update only the custom attributes of an existing Wati contact."""
+    recipient = normalize_whatsapp_number(whatsapp_number)
+    if not recipient:
+        raise WatiAPIError("Invalid WhatsApp phone number.")
+
+    path = f"/api/v1/updateContactAttributes/{quote(recipient, safe='')}"
+    response = _api_request("POST", path, payload={"customParams": custom_params or []})
+    if response.get("result") is False or response.get("ok") is False:
+        raise WatiAPIError(
+            str(
+                response.get("info")
+                or response.get("message")
+                or "Wati updateContactAttributes failed"
+            ),
+            payload=response,
+        )
+    return response
+
+
+def get_contacts(
+    *,
+    page_size: int = 100,
+    page_number: int = 1,
+    attribute_name: str | None = None,
+    attribute_value: str | None = None,
+) -> dict[str, Any]:
+    """Fetch a page of contacts from the Wati address book."""
+    query: dict[str, Any] = {
+        "pageSize": max(1, min(page_size, 100)),
+        "pageNumber": max(1, page_number),
+    }
+    if attribute_name and attribute_value:
+        query["attribute"] = f"{attribute_name}={attribute_value}"
+    return _api_request("GET", "/api/v1/getContacts", query=query)
+
+
+def contact_params(values: dict[str, str | None]) -> list[dict[str, str]]:
+    """Shape a mapping into the {name, value} list Wati expects, dropping blanks."""
+    return [
+        {"name": key, "value": str(value).strip()[:512]}
+        for key, value in values.items()
+        if value is not None and str(value).strip()
+    ]
+
+
 def get_messages(whatsapp_number: str, *, page_size: int = 100, page_number: int = 1) -> dict[str, Any]:
     """Fetch recent conversation history for a WhatsApp number from Wati."""
     recipient = normalize_whatsapp_number(whatsapp_number)
