@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+
+{% block title %}Import Preview | {{ config.APP_NAME }}{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
+  <div>
+    <p class="text-uppercase small fw-semibold text-body-secondary mb-1">Accounts</p>
+    <h1 class="h3 mb-1">Review before importing</h1>
+    <p class="text-body-secondary mb-0">{{ filename }} — nothing has been saved yet.</p>
+  </div>
+  <a class="btn btn-outline-secondary" href="{{ url_for('imports.upload_view') }}"><span class="material-symbols-outlined">arrow_back</span> Upload A Different File</a>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-6 col-lg-3">
+    <div class="crm-card h-100"><div class="card-body">
+      <p class="text-uppercase small fw-semibold text-body-secondary mb-1">New accounts</p>
+      <p class="h3 mb-0">{{ new_accounts }}</p>
+    </div></div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="crm-card h-100"><div class="card-body">
+      <p class="text-uppercase small fw-semibold text-body-secondary mb-1">Contacts to create</p>
+      <p class="h3 mb-0">{{ contacts_new }}</p>
+    </div></div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="crm-card h-100"><div class="card-body">
+      <p class="text-uppercase small fw-semibold text-body-secondary mb-1">Contacts to update</p>
+      <p class="h3 mb-0">{{ contacts_updated }}</p>
+    </div></div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="crm-card h-100"><div class="card-body">
+      <p class="text-uppercase small fw-semibold text-body-secondary mb-1">Rows rejected</p>
+      <p class="h3 mb-0 {% if result.error_rows %}text-danger{% endif %}">{{ result.error_rows | length }}</p>
+    </div></div>
+  </div>
+</div>
+
+{% if result.truncated %}
+<div class="alert alert-warning">Only the first rows of this file were read. Split the file into smaller batches to import the rest.</div>
+{% endif %}
+
+{% if result.unknown_headers %}
+<div class="alert alert-warning">
+  These columns were not recognised and will be ignored: {% for header in result.unknown_headers %}<code>{{ header }}</code>{% if not loop.last %}, {% endif %}{% endfor %}
+</div>
+{% endif %}
+
+{% if result.duplicate_headers %}
+<div class="alert alert-warning">
+  These columns map to a field another column already fills, so only the first one is used: {% for header in result.duplicate_headers %}<code>{{ header }}</code>{% if not loop.last %}, {% endif %}{% endfor %}
+</div>
+{% endif %}
+
+{% if result.error_rows %}
+<div class="crm-card mb-3">
+  <div class="card-body d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+    <div>
+      <h2 class="h5 mb-1 text-danger">{{ result.error_rows | length }} row(s) will be skipped</h2>
+      <p class="text-body-secondary mb-0">Download the list, fix those rows, and upload them as a second file.</p>
+    </div>
+    <a class="btn btn-outline-danger" href="{{ url_for('imports.error_report_view', token=token) }}">
+      <span class="material-symbols-outlined">download</span> Download Rejected Rows
+    </a>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-sm align-middle mb-0">
+      <thead><tr><th>Row</th><th>Company</th><th>Contact</th><th>Problem</th></tr></thead>
+      <tbody>
+        {% for row in result.error_rows[:20] %}
+        <tr>
+          <td>{{ row.row_number }}</td>
+          <td>{{ row.account.company_name or "—" }}</td>
+          <td>{{ row.display_name }}</td>
+          <td class="text-danger small">{{ row.errors | join("; ") }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if result.error_rows | length > 20 %}
+  <div class="card-body pt-0"><p class="text-body-secondary small mb-0">Showing the first 20 of {{ result.error_rows | length }} rejected rows.</p></div>
+  {% endif %}
+</div>
+{% endif %}
+
+<div class="crm-card mb-3">
+  <div class="card-body">
+    <h2 class="h5 mb-1">{{ plan_total }} row(s) ready to import</h2>
+    <p class="text-body-secondary mb-1">
+      {% if plan_total > preview_row_limit %}Showing the first {{ preview_row_limit }}.{% endif %}
+      Rows marked <span class="badge text-bg-info">Update</span> match a contact that already exists.
+    </p>
+    <p class="text-body-secondary small mb-0">
+      An update only writes the columns your file contains, and a blank cell is left alone rather than
+      erasing what the CRM already holds. On a company that already exists, empty account fields are
+      filled in from the file and tags are added, but existing values are never overwritten.
+    </p>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead>
+        <tr>
+          <th>Row</th>
+          <th>Company</th>
+          <th>Contact</th>
+          <th>Email</th>
+          <th>WhatsApp</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for plan in plans %}
+        <tr>
+          <td class="text-body-secondary">{{ plan.row.row_number }}</td>
+          <td>
+            {{ plan.account_name }}
+            {% if plan.creates_account %}
+            <span class="badge text-bg-success ms-1">New account</span>
+            {% elif plan.backfill_fields %}
+            <div class="small text-body-secondary">Fills in: {{ plan.backfill_fields | join(", ") }}</div>
+            {% endif %}
+          </td>
+          <td>
+            {{ plan.row.display_name }}
+            {% if plan.row.contact.is_primary %}<span class="badge text-bg-light ms-1">Primary</span>{% endif %}
+            {% if plan.row.warnings %}
+            <div class="small text-warning-emphasis">{{ plan.row.warnings | join("; ") }}</div>
+            {% endif %}
+          </td>
+          <td class="small">{{ plan.row.contact.email or "—" }}</td>
+          <td class="small">{{ plan.row.contact.whatsapp_number or "—" }}</td>
+          <td>
+            {% if plan.contact_action == "update" %}
+            <span class="badge text-bg-info">Update</span>
+            {% else %}
+            <span class="badge text-bg-primary">Create</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" class="crm-empty-state"><span class="material-symbols-outlined">upload_file</span> No importable rows in this file.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<form method="post" action="{{ url_for('imports.commit_view') }}" id="import-commit-form">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="token" value="{{ token }}">
+  <div class="d-flex flex-wrap gap-2">
+    <button class="btn btn-primary" type="submit" id="import-commit-button" {% if not plan_total %}disabled{% endif %}>
+      <span class="material-symbols-outlined">check</span> Import {{ plan_total }} Row(s)
+    </button>
+    <a class="btn btn-outline-secondary" href="{{ url_for('imports.upload_view') }}">Cancel</a>
+  </div>
+  <p class="text-body-secondary small mt-2 mb-0">A large import can take a minute. Leave this page open until it finishes.</p>
+</form>
+
+<script>
+  // A second submit would import the same file twice; the server also refuses
+  // a repeat, but disabling here makes the wait obvious.
+  document.getElementById("import-commit-form").addEventListener("submit", function () {
+    var button = document.getElementById("import-commit-button");
+    button.disabled = true;
+    button.textContent = "Importing…";
+  });
+</script>
+{% endblock %}
