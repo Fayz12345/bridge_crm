@@ -1,5 +1,4 @@
 import pytest
-
 from bridge_crm.crm.imports import queries as import_queries
 from bridge_crm.crm.imports import staging
 from bridge_crm.crm.imports.csv_parser import (

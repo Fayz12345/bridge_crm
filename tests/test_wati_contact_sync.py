@@ -1,5 +1,4 @@
 import pytest
-
 from bridge_crm.crm.imports import wati_sync
 from bridge_crm.integrations.wati import contact_params
 from bridge_crm.integrations.whatsapp import WhatsAppAPIError

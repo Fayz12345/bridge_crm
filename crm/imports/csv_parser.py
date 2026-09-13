@@ -405,24 +405,7 @@ def _label(name: str) -> str:
 
 
 def sample_csv_header() -> str:
-    return ",".join(
-        [
-            "company_name",
-            "erp_client_id",
-            "first_name",
-            "last_name",
-            "email",
-            "phone_prefix",
-            "phone",
-            "whatsapp_number",
-            "job_title",
-            "is_primary",
-            "industry",
-            "city",
-            "country",
-            "notes",
-        ]
-    )
+    return "company_name,erp_client_id,first_name,last_name,email,phone_prefix,phone,whatsapp_number,job_title,is_primary,industry,city,country,notes"
 
 
 def error_report_csv(result: ParseResult) -> str:

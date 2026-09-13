@@ -15,6 +15,8 @@ from datetime import datetime, timezone
 
 from sqlalchemy import func, select, update
 
+from bridge_crm.db.engine import get_connection
+from bridge_crm.db.schema import crm_accounts, crm_contacts
 from bridge_crm.integrations.wati import contact_params
 from bridge_crm.integrations.whatsapp import (
     WhatsAppAPIError,
@@ -22,8 +24,6 @@ from bridge_crm.integrations.whatsapp import (
     contacts_supported,
     normalize_whatsapp_number,
 )
-from bridge_crm.db.engine import get_connection
-from bridge_crm.db.schema import crm_accounts, crm_contacts
 
 logger = logging.getLogger(__name__)
 
@@ -105,7 +105,7 @@ def sync_one_contact(contact_id: int) -> SyncOutcome:
     """
     try:
         return sync_contacts([contact_id], throttle=0)
-    except Exception as exc:  # noqa: BLE001 - sync must never break the calling save
+    except Exception as exc:
         logger.exception("Wati contact sync raised for contact %s", contact_id)
         return SyncOutcome(failed=1, failures=[{"contact_id": contact_id, "error": str(exc)[:300]}])
 

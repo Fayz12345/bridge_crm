@@ -198,7 +198,7 @@ def commit_import(rows: list[ParsedRow], user_id: int) -> ImportOutcome:
                 )
                 outcome.contacts_updated += 1
             outcome.contact_ids.append(int(contact_id))
-        except Exception as exc:  # noqa: BLE001 - one bad row must not stop the import
+        except Exception as exc:
             logger.exception("Contact import failed on row %s", row.row_number)
             outcome.failures.append(
                 {

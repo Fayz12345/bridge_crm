@@ -1,5 +1,5 @@
-from bridge_crm.crm.whatsapp.channels import parse_wati_phone_numbers
 from bridge_crm.crm.whatsapp import inbound
+from bridge_crm.crm.whatsapp.channels import parse_wati_phone_numbers
 from bridge_crm.integrations import wati
 
 
