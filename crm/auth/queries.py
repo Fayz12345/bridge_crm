@@ -8,6 +8,7 @@ from bridge_crm.db.schema import (
     crm_login_attempts,
     crm_password_reset_tokens,
     crm_users,
+    crm_whatsapp_channels,
 )
 
 VALID_USER_ROLES = ("admin", "manager", "rep")
@@ -31,10 +32,23 @@ def get_user_by_id(user_id: int | None):
 
 
 def list_users(active_only: bool = False) -> list[dict]:
-    statement = select(crm_users).order_by(
-        crm_users.c.is_active.desc(),
-        func.lower(crm_users.c.full_name),
-        crm_users.c.id,
+    statement = (
+        select(
+            *crm_users.c,
+            crm_whatsapp_channels.c.phone_number.label("whatsapp_channel_number"),
+            crm_whatsapp_channels.c.display_name.label("whatsapp_channel_name"),
+        )
+        .select_from(
+            crm_users.outerjoin(
+                crm_whatsapp_channels,
+                crm_whatsapp_channels.c.id == crm_users.c.whatsapp_channel_id,
+            )
+        )
+        .order_by(
+            crm_users.c.is_active.desc(),
+            func.lower(crm_users.c.full_name),
+            crm_users.c.id,
+        )
     )
     if active_only:
         statement = statement.where(crm_users.c.is_active.is_(True))
@@ -66,7 +80,14 @@ def get_users_by_emails(emails: list[str]) -> list[dict]:
     return [dict(row) for row in rows]
 
 
-def create_user(email: str, password: str, full_name: str, role: str = "rep", is_active: bool = True) -> int:
+def create_user(
+    email: str,
+    password: str,
+    full_name: str,
+    role: str = "rep",
+    is_active: bool = True,
+    whatsapp_channel_id: int | None = None,
+) -> int:
     normalized_role = (role or "rep").strip().lower()
     if normalized_role not in VALID_USER_ROLES:
         raise ValueError(f"Invalid role: {role}")
@@ -79,6 +100,7 @@ def create_user(email: str, password: str, full_name: str, role: str = "rep", is
             full_name=full_name.strip(),
             role=normalized_role,
             is_active=is_active,
+            whatsapp_channel_id=whatsapp_channel_id,
         )
         .returning(crm_users.c.id)
     )
@@ -87,7 +109,14 @@ def create_user(email: str, password: str, full_name: str, role: str = "rep", is
     return int(user_id)
 
 
-def update_user(user_id: int, full_name: str, role: str, is_active: bool, password: str | None = None) -> None:
+def update_user(
+    user_id: int,
+    full_name: str,
+    role: str,
+    is_active: bool,
+    password: str | None = None,
+    whatsapp_channel_id: int | None = None,
+) -> None:
     normalized_role = (role or "rep").strip().lower()
     if normalized_role not in VALID_USER_ROLES:
         raise ValueError(f"Invalid role: {role}")
@@ -96,6 +125,7 @@ def update_user(user_id: int, full_name: str, role: str, is_active: bool, passwo
         "full_name": full_name.strip(),
         "role": normalized_role,
         "is_active": is_active,
+        "whatsapp_channel_id": whatsapp_channel_id,
         "updated_at": datetime.now(timezone.utc),
     }
     if password:

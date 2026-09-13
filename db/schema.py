@@ -38,9 +38,23 @@ crm_users = Table(
     Column("full_name", String(255), nullable=False),
     Column("role", String(20), nullable=False, server_default="rep"),
     Column("is_active", Boolean, nullable=False, server_default="true"),
+    Column("whatsapp_channel_id", ForeignKey("crm_whatsapp_channels.id")),
     Column("created_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
     Column("updated_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
     CheckConstraint("role IN ('admin', 'manager', 'rep')", name="user_role"),
+)
+
+crm_whatsapp_channels = Table(
+    "crm_whatsapp_channels",
+    metadata,
+    Column("id", Integer, primary_key=True),
+    Column("phone_number", String(30), nullable=False, unique=True),
+    Column("display_name", String(120), nullable=False, server_default=""),
+    Column("is_default", Boolean, nullable=False, server_default="false"),
+    Column("is_active", Boolean, nullable=False, server_default="true"),
+    Column("synced_at", DateTime(timezone=True)),
+    Column("created_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
+    Column("updated_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
 )
 
 crm_accounts = Table(

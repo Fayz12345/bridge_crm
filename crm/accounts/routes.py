@@ -226,6 +226,7 @@ def _render_bulk_whatsapp_template(
     body_text: str = "",
     broadcast_name: str = "",
     template_name: str = "",
+    channel_number: str | None = None,
 ):
     rows = _account_bulk_rows(accounts)
     return render_bulk_whatsapp_page(
@@ -237,6 +238,7 @@ def _render_bulk_whatsapp_template(
         send_endpoint="accounts.send_bulk_whatsapp_view",
         broadcast_name=broadcast_name,
         template_name=template_name,
+        channel_number=channel_number,
     )
 
 
@@ -607,6 +609,7 @@ def bulk_whatsapp_view():
         body_text=body_text,
         broadcast_name=request.form.get("broadcast_name", "").strip(),
         template_name=request.form.get("template_name", "").strip(),
+        channel_number=request.form.get("channel_number", "").strip(),
     )
 
 
@@ -634,6 +637,7 @@ def send_bulk_whatsapp_view():
         return_to=return_to,
         broadcast_name=request.form.get("broadcast_name", "").strip(),
         template_name=request.form.get("template_name", "").strip(),
+        channel_number=request.form.get("channel_number", "").strip(),
     )
     return redirect(return_to)
 

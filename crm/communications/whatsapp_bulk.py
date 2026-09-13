@@ -5,6 +5,11 @@ from flask import flash, g, render_template
 
 from bridge_crm.config import get_settings
 from bridge_crm.crm.activities.queries import log_activity
+from bridge_crm.crm.whatsapp.channels import (
+    channel_label,
+    list_channels,
+    resolve_channel_number,
+)
 from bridge_crm.crm.whatsapp.queries import create_whatsapp_message
 from bridge_crm.crm.whatsapp.template_queries import list_approved_templates
 from bridge_crm.integrations.wati import outreach_parameters
@@ -33,11 +38,21 @@ def render_bulk_whatsapp_page(
     broadcast_name: str = "",
     template_name: str = "",
     entity: str = "",
+    channel_number: str | None = None,
 ):
     ready = whatsapp_configured()
     settings = get_settings()
     approved_templates = list_approved_templates() if ready else []
     templates_are_ready = templates_ready() or bool(approved_templates)
+    channels = list_channels(active_only=True) if ready else []
+    selected_channel = (
+        normalize_whatsapp_number(channel_number)
+        or resolve_channel_number(user=g.user if g.get("user") else None)
+    )
+    selected_record = next(
+        (item for item in channels if item.get("phone_number") == selected_channel),
+        None,
+    )
     return render_template(
         "communications/bulk_whatsapp.html",
         records=records,
@@ -55,6 +70,9 @@ def render_bulk_whatsapp_page(
         whatsapp_provider=provider_name() if ready else "",
         default_template=settings.whatsapp_default_template if ready else "",
         approved_templates=approved_templates,
+        whatsapp_channels=channels,
+        selected_channel_number=selected_channel or "",
+        selected_channel_label=channel_label(selected_record) or selected_channel or "",
     )
 
 
@@ -66,6 +84,7 @@ def send_bulk_whatsapp(
     return_to: str,
     broadcast_name: str = "",
     template_name: str = "",
+    channel_number: str | None = None,
 ):
     if not whatsapp_configured():
         flash(
@@ -84,6 +103,10 @@ def send_bulk_whatsapp(
         return False
     campaign = (broadcast_name or "").strip() or _default_broadcast_name(related_type)
     rep_name = (g.user or {}).get("full_name") or "Bridge Wireless"
+    from_number = resolve_channel_number(
+        user=g.user if g.get("user") else None,
+        explicit=channel_number,
+    )
     skipped_count = sum(1 for record in records if not record.get("whatsapp_number"))
     ready_records = [record for record in records if record.get("whatsapp_number")]
 
@@ -100,6 +123,7 @@ def send_bulk_whatsapp(
             template=template,
             campaign=campaign,
             rep_name=rep_name,
+            from_number=from_number,
         )
     if not sent:
         sent = _send_one_by_one(
@@ -109,6 +133,7 @@ def send_bulk_whatsapp(
             template=template,
             campaign=campaign,
             rep_name=rep_name,
+            from_number=from_number,
         )
 
     if skipped_count:
@@ -129,6 +154,7 @@ def _send_wati_broadcast(
     template: str,
     campaign: str,
     rep_name: str,
+    from_number: str | None,
 ) -> bool:
     receivers = []
     for record in records:
@@ -154,6 +180,7 @@ def _send_wati_broadcast(
             receivers,
             template_name=template,
             broadcast_name=campaign,
+            channel_number=from_number,
         )
     except WhatsAppAPIError as exc:
         logger.warning("Wati bulk broadcast failed (%s); sending one by one.", exc)
@@ -166,7 +193,7 @@ def _send_wati_broadcast(
             related_type=related_type,
             related_id=int(record["id"]),
             to_number=item["whatsapp_number"],
-            from_number=None,
+            from_number=from_number,
             message_type="template",
             body=body_text or f"Template {template}",
             template_name=template,
@@ -180,7 +207,7 @@ def _send_wati_broadcast(
             "whatsapp_sent",
             f"WhatsApp broadcast '{campaign}' sent to {item['whatsapp_number']}.",
             g.user["id"] if g.user else None,
-            {"template": True, "broadcast": campaign},
+            {"template": True, "broadcast": campaign, "channel_number": from_number},
         )
     flash(f"Broadcast '{campaign}' sent to {len(receivers)} recipient(s) via Wati.", "success")
     return True
@@ -194,6 +221,7 @@ def _send_one_by_one(
     template: str,
     campaign: str,
     rep_name: str,
+    from_number: str | None,
 ) -> bool:
     sent_count = 0
     failed_count = 0
@@ -208,6 +236,7 @@ def _send_one_by_one(
                 message_body=body_text,
                 template_name=template,
                 broadcast_name=campaign,
+                channel_number=from_number,
             )
             wa_message_id = _extract_message_id(response)
             create_whatsapp_message(
@@ -215,7 +244,7 @@ def _send_one_by_one(
                 related_type=related_type,
                 related_id=int(record["id"]),
                 to_number=phone,
-                from_number=None,
+                from_number=from_number,
                 message_type="template",
                 body=body_text or f"Template {template}",
                 template_name=template,
@@ -229,7 +258,12 @@ def _send_one_by_one(
                 "whatsapp_sent",
                 f"WhatsApp template sent to {phone}.",
                 g.user["id"] if g.user else None,
-                {"wa_message_id": wa_message_id, "template": True, "broadcast": campaign},
+                {
+                    "wa_message_id": wa_message_id,
+                    "template": True,
+                    "broadcast": campaign,
+                    "channel_number": from_number,
+                },
             )
             sent_count += 1
         except WhatsAppAPIError as exc:
@@ -238,7 +272,7 @@ def _send_one_by_one(
                 related_type=related_type,
                 related_id=int(record["id"]),
                 to_number=phone,
-                from_number=None,
+                from_number=from_number,
                 message_type="template",
                 body=body_text or f"Template {template}",
                 template_name=template,

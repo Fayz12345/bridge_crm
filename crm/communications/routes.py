@@ -160,6 +160,7 @@ def broadcast_view():
             broadcast_name=request.form.get("broadcast_name", "").strip(),
             template_name=request.form.get("template_name", "").strip(),
             entity=entity,
+            channel_number=request.form.get("channel_number", "").strip(),
         )
 
     search_term = request.args.get("q", "").strip()
@@ -202,6 +203,7 @@ def broadcast_preview_view():
         broadcast_name=request.form.get("broadcast_name", "").strip(),
         template_name=request.form.get("template_name", "").strip(),
         entity=entity,
+        channel_number=request.form.get("channel_number", "").strip(),
     )
 
 
@@ -225,6 +227,7 @@ def send_broadcast_view():
         return_to=return_to,
         broadcast_name=request.form.get("broadcast_name", "").strip(),
         template_name=request.form.get("template_name", "").strip(),
+        channel_number=request.form.get("channel_number", "").strip(),
     )
     return redirect(return_to)
 

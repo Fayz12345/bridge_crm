@@ -33,6 +33,10 @@ def initialize_database() -> None:
         _sync_stage_table(connection, crm_purchase_stages, DEFAULT_PURCHASE_STAGES)
         _sync_product_interest_options(connection)
 
+    from bridge_crm.crm.whatsapp.channels import ensure_default_channel
+
+    ensure_default_channel()
+
 
 def _ensure_incremental_schema(connection) -> None:
     inspector = inspect(connection)
@@ -56,6 +60,25 @@ def _ensure_incremental_schema(connection) -> None:
                     "ALTER TABLE crm_emails "
                     "ADD COLUMN attachments_json JSON DEFAULT '[]'"
                 )
+            )
+
+    user_columns = (
+        {column["name"] for column in inspector.get_columns("crm_users")}
+        if "crm_users" in tables
+        else set()
+    )
+    if "crm_users" in tables and "whatsapp_channel_id" not in user_columns:
+        if connection.dialect.name == "postgresql":
+            connection.execute(
+                text(
+                    "ALTER TABLE crm_users "
+                    "ADD COLUMN whatsapp_channel_id INTEGER "
+                    "REFERENCES crm_whatsapp_channels(id)"
+                )
+            )
+        else:
+            connection.execute(
+                text("ALTER TABLE crm_users ADD COLUMN whatsapp_channel_id INTEGER")
             )
 
     contact_columns = (

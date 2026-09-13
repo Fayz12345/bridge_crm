@@ -17,6 +17,10 @@
         <span class="wa-dot">·</span>
         <span>{{ whatsapp_phone }}</span>
         {% endif %}
+        {% if whatsapp_from_number %}
+        <span class="wa-dot">·</span>
+        <span>from {{ whatsapp_from_label or whatsapp_from_number }}</span>
+        {% endif %}
         {% else %}
         <span>Not connected</span>
         {% endif %}
@@ -62,6 +66,9 @@
   <p class="wa-composer-hint">
     Replies refresh automatically.
     Session replies work for 24 hours after the contact messages you.
+    {% if whatsapp_from_number %}
+    Replies send from <code>{{ whatsapp_from_number }}</code>.
+    {% endif %}
     {% if whatsapp_templates_ready %}
     Template <code>{{ whatsapp_default_template }}</code> is for first contact.
     {% endif %}

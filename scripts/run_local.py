@@ -16,16 +16,19 @@ DEFAULT_ADMIN_PASSWORD = "local-admin-pass"
 
 
 def _configure_environment(pg_host: str) -> None:
+    from dotenv import load_dotenv
+
+    load_dotenv(PROJECT_ROOT / ".env", override=True)
     os.environ.setdefault(
         "SECRET_KEY",
         "local-dev-secret-change-before-production-use-only",
     )
-    os.environ.setdefault("CRM_DB_PASSWORD", "local-dev-password")
-    os.environ.setdefault("CRM_DB_USER", "bridge_crm")
-    os.environ.setdefault("CRM_DB_NAME", "bridge_crm")
-    os.environ.setdefault("CRM_DB_PORT", "5432")
+    os.environ["CRM_DB_PASSWORD"] = "local-dev-password"
+    os.environ["CRM_DB_USER"] = "bridge_crm"
+    os.environ["CRM_DB_NAME"] = "bridge_crm"
+    os.environ["CRM_DB_PORT"] = "5432"
     os.environ["CRM_DB_HOST"] = pg_host
-    os.environ.setdefault("SESSION_COOKIE_SECURE", "false")
+    os.environ["SESSION_COOKIE_SECURE"] = "false"
     os.environ.setdefault("SESSION_COOKIE_SAMESITE", "Lax")
     os.environ.setdefault(
         "CORS_ALLOWED_ORIGINS",

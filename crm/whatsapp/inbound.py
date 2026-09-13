@@ -7,7 +7,7 @@ import time
 from datetime import datetime, timezone
 from typing import Any
 
-from flask import has_request_context, url_for
+from flask import g, has_request_context, url_for
 
 from bridge_crm.crm.activities.queries import log_activity
 from bridge_crm.crm.leads.queries import create_lead
@@ -21,6 +21,7 @@ from bridge_crm.crm.whatsapp.queries import (
 )
 from bridge_crm.integrations.whatsapp import (
     WhatsAppAPIError,
+    extract_channel_number,
     get_conversation_messages,
     normalize_whatsapp_number,
     provider_name,
@@ -241,6 +242,7 @@ def record_inbound_message(
     log: bool = True,
     related_type: str | None = None,
     related_id: int | None = None,
+    to_number: str | None = None,
 ) -> dict | None:
     digits = normalize_whatsapp_number(from_number)
     text = (body or "").strip()
@@ -285,7 +287,7 @@ def record_inbound_message(
         direction="inbound",
         related_type=entity["related_type"],
         related_id=entity["related_id"],
-        to_number=None,
+        to_number=normalize_whatsapp_number(to_number),
         from_number=digits,
         message_type=message_type if message_type in {"text", "template", "media"} else "text",
         body=text,
@@ -306,7 +308,7 @@ def record_inbound_message(
             {"channel": "whatsapp", "wa_message_id": stored_id},
         )
     if notify:
-        _notify_owner(entity, text)
+        _notify_inbound(entity, text, channel_number=to_number)
     return entity
 
 
@@ -321,6 +323,7 @@ def store_wati_payload(
 ) -> dict | None:
     body, message_type = extract_body_and_type(payload)
     from_number = extract_wa_id(payload) or normalize_whatsapp_number(fallback_number)
+    channel_number = extract_channel_number(payload)
     ids = extract_message_ids(payload)
     if not body or not from_number:
         return None
@@ -352,7 +355,7 @@ def store_wati_payload(
             related_type=related_type,
             related_id=related_id,
             to_number=from_number,
-            from_number=None,
+            from_number=channel_number,
             message_type=message_type if message_type in {"text", "template", "media"} else "text",
             body=body,
             template_name=None,
@@ -375,6 +378,7 @@ def store_wati_payload(
         log=log,
         related_type=related_type,
         related_id=related_id,
+        to_number=channel_number,
     )
 
 
@@ -399,7 +403,12 @@ def sync_conversation_from_provider(
     _last_sync_at[cache_key] = now
 
     try:
-        response = get_conversation_messages(digits)
+        channel_number = None
+        if has_request_context() and g.get("user"):
+            from bridge_crm.crm.whatsapp.channels import resolve_channel_number
+
+            channel_number = resolve_channel_number(user=g.user)
+        response = get_conversation_messages(digits, channel_number=channel_number)
     except WhatsAppAPIError:
         logger.warning("Wati message history sync failed for %s/%s", related_type, related_id)
         return 0
@@ -516,9 +525,15 @@ def _create_lead_for_unknown_number(digits: str, sender_name: str | None) -> dic
     }
 
 
-def _notify_owner(entity: dict, body: str) -> None:
+def _notify_inbound(entity: dict, body: str, *, channel_number: str | None = None) -> None:
+    from bridge_crm.crm.whatsapp.channels import list_user_ids_for_channel
+
+    user_ids: set[int] = set()
     owner_id = entity.get("owner_id")
-    if not owner_id:
+    if owner_id:
+        user_ids.add(int(owner_id))
+    user_ids.update(list_user_ids_for_channel(channel_number))
+    if not user_ids:
         return
     related_type = entity["related_type"]
     related_id = entity["related_id"]
@@ -529,15 +544,16 @@ def _notify_owner(entity: dict, body: str) -> None:
             link_url = url_for("leads.detail_view", lead_id=related_id)
         elif related_type == "account":
             link_url = url_for("accounts.detail_view", account_id=related_id)
-    create_notification(
-        {
-            "user_id": int(owner_id),
-            "notification_type": "system",
-            "title": f"WhatsApp reply from {display_name}",
-            "message": (body or "")[:400],
-            "link_url": link_url or None,
-            "related_type": related_type,
-            "related_id": related_id,
-            "metadata": {"channel": "whatsapp"},
-        }
-    )
+    for user_id in sorted(user_ids):
+        create_notification(
+            {
+                "user_id": user_id,
+                "notification_type": "system",
+                "title": f"WhatsApp reply from {display_name}",
+                "message": (body or "")[:400],
+                "link_url": link_url or None,
+                "related_type": related_type,
+                "related_id": related_id,
+                "metadata": {"channel": "whatsapp", "channel_number": channel_number},
+            }
+        )

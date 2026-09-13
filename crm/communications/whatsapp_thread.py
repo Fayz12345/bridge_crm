@@ -4,6 +4,7 @@ from bridge_crm.config import get_settings
 from bridge_crm.crm.accounts.queries import get_account, list_contacts_for_account
 from bridge_crm.crm.activities.queries import log_activity
 from bridge_crm.crm.leads.queries import get_lead
+from bridge_crm.crm.whatsapp.channels import channel_label, resolve_channel_number
 from bridge_crm.crm.whatsapp.inbound import sync_conversation_from_provider
 from bridge_crm.crm.whatsapp.queries import (
     create_whatsapp_message,
@@ -37,9 +38,12 @@ def conversation_context(
             min_interval_seconds=min_interval_seconds,
         )
     messages = list(reversed(list_whatsapp_messages(related_type, related_id)))
+    from_number = resolve_channel_number(user=g.user if g.get("user") else None)
     return {
         "whatsapp_messages": messages,
         "whatsapp_phone": phone or "",
+        "whatsapp_from_number": from_number or "",
+        "whatsapp_from_label": channel_label({"phone_number": from_number}) if from_number else "",
         "whatsapp_api_ready": whatsapp_configured(),
         "whatsapp_templates_ready": templates_ready(),
         "whatsapp_provider": provider_name(),
@@ -116,6 +120,7 @@ def send_entity_whatsapp(
         return redirect(url_for(redirect_endpoint, **redirect_kwargs))
 
     rep_name = (g.user or {}).get("full_name") or "Bridge Wireless"
+    channel_number = resolve_channel_number(user=g.user if g.get("user") else None)
     use_template = message_type == "template"
     try:
         if use_template:
@@ -124,12 +129,13 @@ def send_entity_whatsapp(
                 contact_name=contact_name or "there",
                 rep_name=rep_name,
                 message_body=body,
+                channel_number=channel_number,
             )
             description = f"WhatsApp template sent to {digits}."
             stored_type = "template"
             template_name = get_settings().whatsapp_default_template
         else:
-            response = send_session_message(digits, body)
+            response = send_session_message(digits, body, channel_number=channel_number)
             description = f"WhatsApp session message sent to {digits}."
             stored_type = "text"
             template_name = None
@@ -140,7 +146,7 @@ def send_entity_whatsapp(
             related_type=related_type,
             related_id=related_id,
             to_number=digits,
-            from_number=None,
+            from_number=channel_number,
             message_type=stored_type,
             body=body,
             template_name=template_name,
@@ -154,7 +160,12 @@ def send_entity_whatsapp(
             "whatsapp_sent",
             description,
             g.user["id"] if g.user else None,
-            {"wa_message_id": wa_message_id, "provider": provider_name(), "type": stored_type},
+            {
+                "wa_message_id": wa_message_id,
+                "provider": provider_name(),
+                "type": stored_type,
+                "channel_number": channel_number,
+            },
         )
         flash("WhatsApp message sent.", "success")
     except WhatsAppAPIError as exc:
@@ -163,7 +174,7 @@ def send_entity_whatsapp(
             related_type=related_type,
             related_id=related_id,
             to_number=digits,
-            from_number=None,
+            from_number=channel_number,
             message_type="template" if use_template else "text",
             body=body,
             template_name=get_settings().whatsapp_default_template if use_template else None,

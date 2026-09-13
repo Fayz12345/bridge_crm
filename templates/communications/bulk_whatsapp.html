@@ -74,6 +74,24 @@
             <div class="form-text">Recipients receive this approved template as-is. Manage templates on the <a href="{{ url_for('communications.templates_view') }}">templates</a> page.</div>
           </div>
           {% endif %}
+          {% if whatsapp_channels %}
+          <div class="mb-3">
+            <label class="form-label" for="channel_number">Send from</label>
+            <select class="form-select" id="channel_number" name="channel_number">
+              {% for channel in whatsapp_channels %}
+              <option value="{{ channel.phone_number }}" {% if selected_channel_number == channel.phone_number %}selected{% endif %}>
+                {{ channel.display_name or channel.phone_number }}{% if channel.display_name and channel.display_name != channel.phone_number %} · {{ channel.phone_number }}{% endif %}{% if channel.is_default %} (default){% endif %}
+              </option>
+              {% endfor %}
+              {% if selected_channel_number and selected_channel_number not in whatsapp_channels|map(attribute='phone_number')|list %}
+              <option value="{{ selected_channel_number }}" selected>{{ selected_channel_label or selected_channel_number }}</option>
+              {% endif %}
+            </select>
+            <div class="form-text">The Wati business number this campaign is sent from.</div>
+          </div>
+          {% elif selected_channel_number %}
+          <input type="hidden" name="channel_number" value="{{ selected_channel_number }}">
+          {% endif %}
 
           <div class="d-flex flex-wrap gap-2">
             <button class="btn btn-outline-primary" type="submit" name="action" value="preview">

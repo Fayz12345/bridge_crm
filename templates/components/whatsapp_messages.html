@@ -9,6 +9,11 @@
     <div class="wa-bubble {% if msg.status == 'failed' %}is-failed{% endif %}">
       <div class="wa-bubble-text">{{ msg.body or "" }}</div>
       <div class="wa-bubble-meta">
+        {% if msg.direction == "outbound" and msg.from_number %}
+        <span class="wa-channel" title="Sent from {{ msg.from_number }}">{{ msg.from_number }}</span>
+        {% elif msg.direction == "inbound" and msg.to_number %}
+        <span class="wa-channel" title="Received on {{ msg.to_number }}">{{ msg.to_number }}</span>
+        {% endif %}
         {% if msg.created_at %}{{ msg.created_at.strftime("%H:%M") }}{% endif %}
         {% if msg.direction == "outbound" %}
         <span class="wa-status wa-status-{{ msg.status or 'sent' }}" title="{{ msg.status }}">

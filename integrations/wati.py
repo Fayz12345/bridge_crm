@@ -139,7 +139,46 @@ def _non_json_error(body: str, *, status_code: int | None = None) -> str:
     return f"{prefix}returned a non-JSON response: {preview}"
 
 
-def send_session_message(to_number: str, message: str) -> dict[str, Any]:
+def resolve_channel_number(channel_number: str | None = None) -> str | None:
+    """Prefer an explicit Wati channel, otherwise the tenant default env var."""
+    explicit = normalize_whatsapp_number(channel_number)
+    if explicit:
+        return explicit
+    return normalize_whatsapp_number(get_settings().wati_channel_number)
+
+
+def extract_channel_number(payload: dict[str, Any] | None) -> str | None:
+    """Business WhatsApp number that sent or received a Wati event."""
+    if not isinstance(payload, dict):
+        return None
+    for key in (
+        "channelPhoneNumber",
+        "channel_phone_number",
+        "channel_number",
+        "channelNumber",
+    ):
+        digits = normalize_whatsapp_number(
+            str(payload.get(key)) if payload.get(key) is not None else None
+        )
+        if digits:
+            return digits
+    nested = payload.get("data")
+    if isinstance(nested, dict):
+        return extract_channel_number(nested)
+    return None
+
+
+def list_phone_numbers() -> dict[str, Any]:
+    """List WhatsApp numbers connected to this Wati tenant."""
+    return _api_request("GET", "/api/v1/whatsApp/phoneNumbers")
+
+
+def send_session_message(
+    to_number: str,
+    message: str,
+    *,
+    channel_number: str | None = None,
+) -> dict[str, Any]:
     """Send a free-form session message (valid within 24h customer-service window)."""
     recipient = normalize_whatsapp_number(to_number)
     if not recipient:
@@ -151,8 +190,15 @@ def send_session_message(to_number: str, message: str) -> dict[str, Any]:
 
     # Wati commonly accepts messageText as form field on this endpoint.
     path = f"/api/v1/sendSessionMessage/{quote(recipient, safe='')}"
-    response = _api_request("POST", path, form_data={"messageText": body[:4096]})
-    logger.info("Wati session message sent to %s (id=%s)", recipient, extract_message_id(response))
+    channel = resolve_channel_number(channel_number)
+    query = {"channelPhoneNumber": channel} if channel else None
+    response = _api_request("POST", path, form_data={"messageText": body[:4096]}, query=query)
+    logger.info(
+        "Wati session message sent to %s from %s (id=%s)",
+        recipient,
+        channel or "default",
+        extract_message_id(response),
+    )
     return response
 
 
@@ -162,6 +208,7 @@ def send_template_message(
     *,
     parameters: list[dict[str, str]] | None = None,
     broadcast_name: str | None = None,
+    channel_number: str | None = None,
 ) -> dict[str, Any]:
     """Send an approved Wati template message."""
     settings = get_settings()
@@ -178,8 +225,9 @@ def send_template_message(
         "broadcast_name": (broadcast_name or f"crm_{template}")[:100],
         "parameters": parameters or [],
     }
-    if settings.wati_channel_number.strip():
-        payload["channel_number"] = settings.wati_channel_number.strip()
+    channel = resolve_channel_number(channel_number)
+    if channel:
+        payload["channel_number"] = channel
 
     response = _api_request(
         "POST",
@@ -209,6 +257,7 @@ def send_outreach_template(
     message_body: str,
     template_name: str | None = None,
     broadcast_name: str | None = None,
+    channel_number: str | None = None,
 ) -> dict[str, Any]:
     """
     Send CRM outreach template via Wati.
@@ -224,6 +273,7 @@ def send_outreach_template(
         template_name or settings.whatsapp_default_template,
         parameters=parameters,
         broadcast_name=broadcast_name,
+        channel_number=channel_number,
     )
 
 
@@ -250,6 +300,7 @@ def send_template_broadcast(
     *,
     template_name: str | None = None,
     broadcast_name: str | None = None,
+    channel_number: str | None = None,
 ) -> dict[str, Any]:
     """
     Send one approved template to many numbers as a Wati broadcast.
@@ -268,8 +319,9 @@ def send_template_broadcast(
         "broadcast_name": (broadcast_name or f"crm_{template}")[:100],
         "receivers": [],
     }
-    if settings.wati_channel_number.strip():
-        payload["channel_number"] = settings.wati_channel_number.strip()
+    channel = resolve_channel_number(channel_number)
+    if channel:
+        payload["channel_number"] = channel
 
     for receiver in receivers:
         number = normalize_whatsapp_number(receiver.get("whatsapp_number"))
@@ -376,29 +428,37 @@ def contact_params(values: dict[str, str | None]) -> list[dict[str, str]]:
     ]
 
 
-def get_messages(whatsapp_number: str, *, page_size: int = 100, page_number: int = 1) -> dict[str, Any]:
+def get_messages(
+    whatsapp_number: str,
+    *,
+    page_size: int = 100,
+    page_number: int = 1,
+    channel_number: str | None = None,
+) -> dict[str, Any]:
     """Fetch recent conversation history for a WhatsApp number from Wati."""
     recipient = normalize_whatsapp_number(whatsapp_number)
     if not recipient:
         raise WatiAPIError("Invalid WhatsApp phone number.")
     path = f"/api/v1/getMessages/{quote(recipient, safe='')}"
-    return _api_request(
-        "GET",
-        path,
-        query={"pageSize": max(1, min(page_size, 100)), "pageNumber": max(1, page_number)},
-        timeout=8,
-    )
-
-
-def list_message_templates(*, page_size: int = 100, page_number: int = 1) -> dict[str, Any]:
-    """Fetch Wati message templates, including approval status."""
-    settings = get_settings()
     query: dict[str, Any] = {
         "pageSize": max(1, min(page_size, 100)),
         "pageNumber": max(1, page_number),
     }
-    if settings.wati_channel_number.strip():
-        query["channelPhoneNumber"] = settings.wati_channel_number.strip()
+    channel = resolve_channel_number(channel_number)
+    if channel:
+        query["channelPhoneNumber"] = channel
+    return _api_request("GET", path, query=query, timeout=8)
+
+
+def list_message_templates(*, page_size: int = 100, page_number: int = 1) -> dict[str, Any]:
+    """Fetch Wati message templates, including approval status."""
+    query: dict[str, Any] = {
+        "pageSize": max(1, min(page_size, 100)),
+        "pageNumber": max(1, page_number),
+    }
+    channel = resolve_channel_number()
+    if channel:
+        query["channelPhoneNumber"] = channel
     return _api_request("GET", "/api/v1/getMessageTemplates", query=query)
 
 
